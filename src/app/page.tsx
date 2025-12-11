@@ -8,7 +8,7 @@ import {
   FileText, Plus, Trash2, Moon, Sun, 
   Play, Pause, RefreshCw, ArrowUp, Loader2, 
   Bot, User, Sparkles, Mic, Headphones, UploadCloud, 
-  Github, Book, Heart, Menu // <--- Added Menu Icon
+  Github, Book, Heart, StopCircle // <--- Added StopCircle
 } from "lucide-react";
 
 // UI Components
@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger 
 } from "@/components/ui/dialog";
+import { Card } from "@/components/ui/card";
 
 export default function Dashboard() {
   const { setTheme, theme } = useTheme();
@@ -37,6 +38,10 @@ export default function Dashboard() {
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Voice Input State
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null); // Use 'any' to avoid TS errors with webkitSpeechRecognition
   
   // Podcast State
   const [podcastScript, setPodcastScript] = useState<any[]>([]);
@@ -72,6 +77,43 @@ export default function Dashboard() {
 
   const saveDocsToStorage = (newDocs: any[]) => {
     localStorage.setItem("notewave_docs", JSON.stringify(newDocs));
+  };
+
+  // --- LOGIC: VOICE INPUT ---
+  const toggleVoiceInput = () => {
+    if (isListening) {
+      if (recognitionRef.current) recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Your browser does not support voice input. Try Chrome or Edge.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => setIsListening(true);
+    
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInput((prev) => prev + (prev ? " " : "") + transcript);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error", event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => setIsListening(false);
+
+    recognitionRef.current = recognition;
+    recognition.start();
   };
 
   // --- LOGIC: CHAT ---
@@ -160,7 +202,7 @@ export default function Dashboard() {
     setPodcastScript([]);
     setCurrentLineIndex(null);
     stopAudio();
-    setShowLeftSidebar(false); // Close mobile menu on select
+    setShowLeftSidebar(false);
   }
 
   async function handleDeleteFile(e: React.MouseEvent, docId: number, filename: string) {
@@ -317,21 +359,12 @@ export default function Dashboard() {
   // ==========================================
   return (
     <div className="h-screen flex bg-zinc-50 dark:bg-black overflow-hidden font-sans text-zinc-900 dark:text-zinc-100 relative">
-      
-      {/* MOBILE OVERLAY BACKDROP */}
       {(showLeftSidebar || showRightSidebar) && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm"
-          onClick={() => { setShowLeftSidebar(false); setShowRightSidebar(false); }}
-        />
+        <div className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm" onClick={() => { setShowLeftSidebar(false); setShowRightSidebar(false); }} />
       )}
 
-      {/* 1. LEFT SIDEBAR (Responsive) */}
-      <div className={`
-        fixed inset-y-0 left-0 z-40 w-[280px] bg-white dark:bg-black border-r border-zinc-200 dark:border-zinc-800 flex flex-col transition-transform duration-300 ease-in-out
-        md:translate-x-0 md:static md:w-[280px]
-        ${showLeftSidebar ? "translate-x-0" : "-translate-x-full"}
-      `}>
+      {/* LEFT SIDEBAR */}
+      <div className={`fixed inset-y-0 left-0 z-40 w-[280px] bg-white dark:bg-black border-r border-zinc-200 dark:border-zinc-800 flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:w-[280px] ${showLeftSidebar ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="h-16 flex items-center justify-between px-4 border-b border-zinc-100 dark:border-zinc-800/50">
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 rounded bg-zinc-900 dark:bg-white flex items-center justify-center text-white dark:text-black font-bold text-xs">N</div>
@@ -341,7 +374,6 @@ export default function Dashboard() {
             {mounted ? (theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />) : <span className="w-4 h-4" />}
           </Button>
         </div>
-        
         <div className="p-4">
           <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
             <DialogTrigger asChild>
@@ -361,7 +393,6 @@ export default function Dashboard() {
             </DialogContent>
           </Dialog>
         </div>
-
         <ScrollArea className="flex-1 px-2">
           <div className="space-y-0.5">
             <h3 className="px-2 mb-2 text-[10px] font-medium text-zinc-400 uppercase tracking-wider">Library</h3>
@@ -369,11 +400,7 @@ export default function Dashboard() {
               <div 
                 key={doc.id}
                 onClick={() => handleSwitchFile(doc)}
-                className={`group flex items-center justify-between px-2 py-2 rounded-md cursor-pointer transition-all ${
-                  activeDoc?.id === doc.id 
-                    ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white font-medium" 
-                    : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50"
-                }`}
+                className={`group flex items-center justify-between px-2 py-2 rounded-md cursor-pointer transition-all ${activeDoc?.id === doc.id ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white font-medium" : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50"}`}
               >
                 <div className="flex items-center gap-2 overflow-hidden">
                   <FileText className="w-4 h-4 flex-shrink-0 opacity-70" />
@@ -388,17 +415,16 @@ export default function Dashboard() {
         </ScrollArea>
       </div>
 
-      {/* 2. CENTER CHAT */}
+      {/* CENTER CHAT */}
       <div className="flex-1 flex flex-col relative bg-zinc-50/50 dark:bg-black z-10 w-full">
-        {/* Responsive Header */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-zinc-200/50 dark:border-zinc-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm sticky top-0 z-20">
-          
-          {/* Mobile Menu Button */}
           <Button variant="ghost" size="icon" className="md:hidden text-zinc-500" onClick={() => setShowLeftSidebar(true)}>
-            <Menu className="w-5 h-5" />
+            <div className="h-5 w-5 grid gap-1">
+              <span className="h-0.5 w-full bg-current rounded-full" />
+              <span className="h-0.5 w-full bg-current rounded-full" />
+              <span className="h-0.5 w-full bg-current rounded-full" />
+            </div>
           </Button>
-
-          {/* Active File Label */}
           <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
             <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 hidden sm:inline">Current:</span>
             <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1">
@@ -406,8 +432,6 @@ export default function Dashboard() {
               <span className="max-w-[100px] truncate">{activeDoc?.name}</span>
             </span>
           </div>
-
-          {/* Mobile Audio Button */}
           <Button variant="ghost" size="icon" className="lg:hidden text-zinc-500" onClick={() => setShowRightSidebar(true)}>
             <Headphones className="w-5 h-5" />
           </Button>
@@ -458,13 +482,25 @@ export default function Dashboard() {
               value={input} 
               onChange={e => setInput(e.target.value)} 
               placeholder="Ask anything..." 
-              className="h-14 pl-5 pr-12 rounded-full border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-base focus-visible:ring-1 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-700"
+              className="h-14 pl-12 pr-12 rounded-full border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-base focus-visible:ring-1 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-700"
             />
+            {/* MIC BUTTON */}
+            <Button 
+              type="button" 
+              onClick={toggleVoiceInput}
+              variant="ghost" 
+              size="icon" 
+              className={`absolute left-2 top-2 h-10 w-10 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 ${isListening ? "text-red-500 animate-pulse" : "text-zinc-400"}`}
+            >
+              {isListening ? <StopCircle className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            </Button>
+
+            {/* SEND BUTTON */}
             <Button 
               type="submit" 
-              disabled={isLoading} 
+              disabled={isLoading || !input.trim()} 
               size="icon" 
-              className="absolute right-2 top-2 h-10 w-10 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black hover:bg-zinc-700 dark:hover:bg-zinc-200"
+              className="absolute right-2 top-2 h-10 w-10 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black hover:bg-zinc-700 dark:hover:bg-zinc-200 disabled:opacity-50"
             >
               <ArrowUp className="w-5 h-5" />
             </Button>
@@ -472,12 +508,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 3. RIGHT SIDEBAR (Responsive) */}
-      <div className={`
-        fixed inset-y-0 right-0 z-40 w-[360px] bg-white dark:bg-black border-l border-zinc-200 dark:border-zinc-800 flex flex-col transition-transform duration-300 ease-in-out
-        lg:translate-x-0 lg:static lg:w-[360px]
-        ${showRightSidebar ? "translate-x-0" : "translate-x-full"}
-      `}>
+      {/* RIGHT SIDEBAR */}
+      <div className={`fixed inset-y-0 right-0 z-40 w-[360px] bg-white dark:bg-black border-l border-zinc-200 dark:border-zinc-800 flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:w-[360px] ${showRightSidebar ? "translate-x-0" : "translate-x-full"}`}>
         <div className="h-16 flex items-center justify-between px-6 border-b border-zinc-100 dark:border-zinc-800">
            <h2 className="text-sm font-semibold flex items-center gap-2">
              <Headphones className="w-4 h-4 text-zinc-500" /> Studio
@@ -488,40 +520,26 @@ export default function Dashboard() {
              </Button>
            )}
         </div>
-
         <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20">
            <div className="flex flex-col items-center justify-center space-y-6">
               <div className="flex items-center gap-1 h-12">
                  {[...Array(16)].map((_, i) => (
-                   <div 
-                     key={i} 
-                     className={`w-1 bg-zinc-900 dark:bg-white rounded-full transition-all duration-100 ${isPlaying ? 'animate-pulse' : 'h-1 opacity-20'}`}
-                     style={{ 
-                       height: isPlaying ? `${Math.max(10, Math.random() * 40)}px` : '4px',
-                       animationDelay: `${i * 0.05}s` 
-                     }} 
-                   />
+                   <div key={i} className={`w-1 bg-zinc-900 dark:bg-white rounded-full transition-all duration-100 ${isPlaying ? 'animate-pulse' : 'h-1 opacity-20'}`} style={{ height: isPlaying ? `${Math.max(10, Math.random() * 40)}px` : '4px', animationDelay: `${i * 0.05}s` }} />
                  ))}
               </div>
-
               <div className="flex items-center gap-4">
                 {podcastScript.length === 0 ? (
                    <Button onClick={handleGenerateScript} disabled={isGeneratingScript} className="rounded-full px-6 dark:bg-white dark:text-black">
                      {isGeneratingScript ? "Generating..." : "Generate Audio"}
                    </Button>
                 ) : (
-                   <Button 
-                     onClick={togglePlayback} 
-                     size="icon"
-                     className="h-14 w-14 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black shadow-lg hover:scale-105 transition-transform"
-                   >
+                   <Button onClick={togglePlayback} size="icon" className="h-14 w-14 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black shadow-lg hover:scale-105 transition-transform">
                      {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-1" />}
                    </Button>
                 )}
               </div>
            </div>
         </div>
-
         <div className="flex-1 overflow-hidden relative bg-white dark:bg-black">
           <ScrollArea className="h-full" ref={scriptViewportRef}>
             <div className="p-6 space-y-8 pb-[40vh]"> 
@@ -531,21 +549,12 @@ export default function Dashboard() {
                   <p>No audio generated yet</p>
                 </div>
               )}
-              
               {podcastScript.map((line, i) => {
                 const isActive = i === currentLineIndex;
                 return (
-                  <div 
-                    key={i} 
-                    id={`script-line-${i}`}
-                    className={`transition-all duration-500 ${isActive ? "opacity-100" : "opacity-30 blur-[0.5px] grayscale"}`}
-                  >
-                    <p className={`text-[10px] font-bold tracking-widest uppercase mb-2 ${isActive ? "text-zinc-900 dark:text-white" : "text-zinc-500"}`}>
-                      {line.speaker}
-                    </p>
-                    <p className={`text-base font-medium leading-relaxed ${isActive ? "text-zinc-800 dark:text-zinc-200" : "text-zinc-400"}`}>
-                      {line.text}
-                    </p>
+                  <div key={i} id={`script-line-${i}`} className={`transition-all duration-500 ${isActive ? "opacity-100" : "opacity-30 blur-[0.5px] grayscale"}`}>
+                    <p className={`text-[10px] font-bold tracking-widest uppercase mb-2 ${isActive ? "text-zinc-900 dark:text-white" : "text-zinc-500"}`}>{line.speaker}</p>
+                    <p className={`text-base font-medium leading-relaxed ${isActive ? "text-zinc-800 dark:text-zinc-200" : "text-zinc-400"}`}>{line.text}</p>
                   </div>
                 )
               })}
