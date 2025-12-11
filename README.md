@@ -4,7 +4,7 @@
 
 Built as a showcase of bleeding-edge **Full-Stack AI Engineering**, utilizing **Next.js 16**, Vector Search, and Multi-Modal LLMs.
 
-![NoteWave Dashboard](https://via.placeholder.com/1200x600?text=Active+Dashboard+Screenshot)
+![NoteWave Dashboard](https://github.com/samarthsaxena2004/note-wave/blob/main/public/active-state.png)
 *(Replace this with a screenshot of your main Chat/Audio dashboard)*
 
 ## ⚠️ Important Notice
@@ -32,7 +32,7 @@ Once a document is uploaded, the interface transforms into a fully-featured rese
 ### 2. The Landing Page (Zero State)
 A clean, welcoming drop-zone for new users to get started immediately.
 
-![NoteWave Landing](https://via.placeholder.com/1200x600?text=Landing+Page+Screenshot)
+![NoteWave Landing](https://github.com/samarthsaxena2004/note-wave/blob/main/public/zero-state.png)
 *(Replace this with a screenshot of your drag-and-drop landing page)*
 
 ---
