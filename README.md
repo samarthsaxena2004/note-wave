@@ -4,9 +4,6 @@
 
 Built as a showcase of bleeding-edge **Full-Stack AI Engineering**, utilizing **Next.js 16**, Vector Search, and Multi-Modal LLMs.
 
-![NoteWave Dashboard](https://github.com/samarthsaxena2004/note-wave/blob/main/public/active-state.png)
-*(Replace this with a screenshot of your main Chat/Audio dashboard)*
-
 ## ⚠️ Important Notice
 
 **It is strongly recommended to run this application locally.**
@@ -29,11 +26,12 @@ Running it locally gives you full control, unlimited usage (subject to your own 
 ### 1. The Dashboard (Active State)
 Once a document is uploaded, the interface transforms into a fully-featured research studio with Chat, Source Management, and the Audio Studio.
 
+![NoteWave Dashboard](https://github.com/samarthsaxena2004/note-wave/blob/main/public/active-state.png)
+
 ### 2. The Landing Page (Zero State)
 A clean, welcoming drop-zone for new users to get started immediately.
 
 ![NoteWave Landing](https://github.com/samarthsaxena2004/note-wave/blob/main/public/zero-state.png)
-*(Replace this with a screenshot of your drag-and-drop landing page)*
 
 ---
 
