@@ -8,7 +8,7 @@ import {
   FileText, Plus, Trash2, Moon, Sun, 
   Play, Pause, RefreshCw, ArrowUp, Loader2, 
   Bot, User, Sparkles, Mic, Headphones, UploadCloud, 
-  Github, Twitter, Book, Heart
+  Github, Book, Heart 
 } from "lucide-react";
 
 // UI Components
@@ -52,6 +52,28 @@ export default function Dashboard() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false); 
+
+  // --- PERSISTENCE LOGIC (The "Local Database") ---
+  useEffect(() => {
+    // 1. Load documents from LocalStorage on startup
+    const savedDocs = localStorage.getItem("notewave_docs");
+    if (savedDocs) {
+      try {
+        const parsed = JSON.parse(savedDocs);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setDocuments(parsed);
+          setActiveDoc(parsed[0]); // Select first doc by default
+        }
+      } catch (e) {
+        console.error("Failed to load docs", e);
+      }
+    }
+  }, []);
+
+  // Helper to save current docs to LocalStorage
+  const saveDocsToStorage = (newDocs: any[]) => {
+    localStorage.setItem("notewave_docs", JSON.stringify(newDocs));
+  };
 
   // --- LOGIC: CHAT ---
   async function handleSubmit(e: React.FormEvent) {
@@ -108,7 +130,11 @@ export default function Dashboard() {
       const data = await res.json();
       
       const newDoc = { id: Date.now(), name: data.filename, date: "Just now" };
-      setDocuments(prev => [...prev, newDoc]);
+      const updatedDocs = [...documents, newDoc];
+      
+      setDocuments(updatedDocs);
+      saveDocsToStorage(updatedDocs); // SAVE TO STORAGE
+      
       handleSwitchFile(newDoc);
       setIsUploadOpen(false);
     } catch (err: any) {
@@ -160,8 +186,11 @@ export default function Dashboard() {
     if (!confirm(`Delete ${filename}?`)) return;
     try {
       await fetch("/api/delete", { method: "POST", body: JSON.stringify({ filename }) });
+      
       const newDocs = documents.filter(d => d.id !== docId);
       setDocuments(newDocs);
+      saveDocsToStorage(newDocs); // UPDATE STORAGE
+      
       if (activeDoc?.id === docId) {
         if (newDocs.length > 0) handleSwitchFile(newDocs[0]);
         else setActiveDoc(null);
@@ -244,7 +273,8 @@ export default function Dashboard() {
   // ==========================================
   // VIEW 1: LANDING PAGE (Zero State)
   // ==========================================
-  if (documents.length === 0) {
+  // Show Landing Page ONLY if we are mounted AND have no docs
+  if (mounted && documents.length === 0) {
     return (
       <div className="h-screen flex flex-col bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-200 dark:selection:bg-zinc-800">
         
@@ -339,11 +369,8 @@ export default function Dashboard() {
 
             {/* Right: Socials */}
             <div className="flex items-center gap-6">
-              <a href="https://github.com/samarthsaxena2004" target="_blank" className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-2 text-sm">
+              <a href="https://github.com/samarthsaxena" target="_blank" className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-2 text-sm">
                 <Github className="w-4 h-4" />
-              </a>
-              <a href="https://x.com/enflect_" target="_blank" className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-2 text-sm">
-                <Twitter className="w-4 h-4" />
               </a>
             </div>
           </div>
