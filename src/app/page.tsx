@@ -8,7 +8,7 @@ import {
   FileText, Plus, Trash2, Moon, Sun, 
   Play, Pause, RefreshCw, ArrowUp, Loader2, 
   Bot, User, Sparkles, Mic, Headphones, UploadCloud, 
-  Github, Book, Heart 
+  Github, Book, Heart, Menu // <--- Added Menu Icon
 } from "lucide-react";
 
 // UI Components
@@ -19,7 +19,6 @@ import { Input } from "@/components/ui/input";
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger 
 } from "@/components/ui/dialog";
-import { Card } from "@/components/ui/card";
 
 export default function Dashboard() {
   const { setTheme, theme } = useTheme();
@@ -53,24 +52,24 @@ export default function Dashboard() {
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false); 
 
-  // --- PERSISTENCE LOGIC (The "Local Database") ---
+  // Mobile State
+  const [showLeftSidebar, setShowLeftSidebar] = useState(false);
+  const [showRightSidebar, setShowRightSidebar] = useState(false);
+
+  // --- PERSISTENCE ---
   useEffect(() => {
-    // 1. Load documents from LocalStorage on startup
     const savedDocs = localStorage.getItem("notewave_docs");
     if (savedDocs) {
       try {
         const parsed = JSON.parse(savedDocs);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setDocuments(parsed);
-          setActiveDoc(parsed[0]); // Select first doc by default
+          setActiveDoc(parsed[0]); 
         }
-      } catch (e) {
-        console.error("Failed to load docs", e);
-      }
+      } catch (e) { console.error(e); }
     }
   }, []);
 
-  // Helper to save current docs to LocalStorage
   const saveDocsToStorage = (newDocs: any[]) => {
     localStorage.setItem("notewave_docs", JSON.stringify(newDocs));
   };
@@ -111,11 +110,7 @@ export default function Dashboard() {
           return updated;
         });
       }
-    } catch (error) {
-      console.error("Chat error:", error);
-    } finally {
-      setIsLoading(false);
-    }
+    } catch (error) { console.error(error); } finally { setIsLoading(false); }
   }
 
   // --- LOGIC: UPLOAD ---
@@ -133,16 +128,11 @@ export default function Dashboard() {
       const updatedDocs = [...documents, newDoc];
       
       setDocuments(updatedDocs);
-      saveDocsToStorage(updatedDocs); // SAVE TO STORAGE
+      saveDocsToStorage(updatedDocs);
       
       handleSwitchFile(newDoc);
       setIsUploadOpen(false);
-    } catch (err: any) {
-      alert("Error: " + err.message);
-    } finally {
-      setIsUploading(false);
-      setIsDragging(false);
-    }
+    } catch (err: any) { alert("Error: " + err.message); } finally { setIsUploading(false); setIsDragging(false); }
   }
 
   async function handleUploadForm(e: React.FormEvent<HTMLFormElement>) {
@@ -151,24 +141,15 @@ export default function Dashboard() {
     await processUpload(e.currentTarget.files.files[0]);
   }
 
-  function onDragOver(e: React.DragEvent) {
-    e.preventDefault();
-    setIsDragging(true);
-  }
-  function onDragLeave(e: React.DragEvent) {
-    e.preventDefault();
-    setIsDragging(false);
-  }
+  function onDragOver(e: React.DragEvent) { e.preventDefault(); setIsDragging(true); }
+  function onDragLeave(e: React.DragEvent) { e.preventDefault(); setIsDragging(false); }
   function onDrop(e: React.DragEvent) {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
-      if (file.type === "application/pdf") {
-        processUpload(file);
-      } else {
-        alert("Please upload a PDF file.");
-      }
+      if (file.type === "application/pdf") processUpload(file);
+      else alert("Please upload a PDF file.");
     }
   }
 
@@ -179,6 +160,7 @@ export default function Dashboard() {
     setPodcastScript([]);
     setCurrentLineIndex(null);
     stopAudio();
+    setShowLeftSidebar(false); // Close mobile menu on select
   }
 
   async function handleDeleteFile(e: React.MouseEvent, docId: number, filename: string) {
@@ -186,11 +168,9 @@ export default function Dashboard() {
     if (!confirm(`Delete ${filename}?`)) return;
     try {
       await fetch("/api/delete", { method: "POST", body: JSON.stringify({ filename }) });
-      
       const newDocs = documents.filter(d => d.id !== docId);
       setDocuments(newDocs);
-      saveDocsToStorage(newDocs); // UPDATE STORAGE
-      
+      saveDocsToStorage(newDocs);
       if (activeDoc?.id === docId) {
         if (newDocs.length > 0) handleSwitchFile(newDocs[0]);
         else setActiveDoc(null);
@@ -254,9 +234,8 @@ export default function Dashboard() {
   }
 
   function togglePlayback() {
-    if (isPlaying) {
-      stopAudio();
-    } else {
+    if (isPlaying) stopAudio();
+    else {
       const startFrom = currentLineIndex === null || currentLineIndex >= podcastScript.length - 1 ? 0 : currentLineIndex;
       playScriptLoop(startFrom);
     }
@@ -273,12 +252,9 @@ export default function Dashboard() {
   // ==========================================
   // VIEW 1: LANDING PAGE (Zero State)
   // ==========================================
-  // Show Landing Page ONLY if we are mounted AND have no docs
   if (mounted && documents.length === 0) {
     return (
       <div className="h-screen flex flex-col bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-200 dark:selection:bg-zinc-800">
-        
-        {/* Header */}
         <header className="h-16 flex items-center justify-between px-6 md:px-10 border-b border-zinc-100 dark:border-zinc-800">
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 rounded bg-black dark:bg-white flex items-center justify-center text-white dark:text-black font-bold text-xs">N</div>
@@ -288,90 +264,47 @@ export default function Dashboard() {
             {mounted ? (theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />) : <span className="w-4 h-4" />}
           </Button>
         </header>
-
-        {/* Main Content */}
         <main className="flex-1 flex flex-col items-center justify-center p-6 relative overflow-hidden">
           <div className="absolute inset-0 pointer-events-none">
              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-zinc-200/50 dark:bg-zinc-800/20 rounded-full blur-[120px]" />
           </div>
-
           <div className="relative z-10 text-center max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="space-y-4">
-              <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-zinc-900 dark:text-white">
-                Chat with your documents.
-              </h1>
-              <p className="text-lg text-zinc-500 dark:text-zinc-400 max-w-lg mx-auto leading-relaxed">
-                Upload a PDF to generate podcasts, summaries, and ask questions using advanced AI.
-              </p>
+              <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-zinc-900 dark:text-white">Chat with your documents.</h1>
+              <p className="text-lg text-zinc-500 dark:text-zinc-400 max-w-lg mx-auto leading-relaxed">Upload a PDF to generate podcasts, summaries, and ask questions using advanced AI.</p>
             </div>
-
-            {/* Drag & Drop Zone */}
             <div 
-              onDragOver={onDragOver}
-              onDragLeave={onDragLeave}
-              onDrop={onDrop}
-              className={`
-                group relative border-2 border-dashed rounded-3xl p-10 transition-all duration-300 cursor-pointer
-                ${isDragging 
-                  ? "border-zinc-900 dark:border-white bg-zinc-50 dark:bg-zinc-900 scale-[1.02]" 
-                  : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 bg-white/50 dark:bg-black/50"
-                }
-              `}
+              onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
+              className={`group relative border-2 border-dashed rounded-3xl p-10 transition-all duration-300 cursor-pointer ${isDragging ? "border-zinc-900 dark:border-white bg-zinc-50 dark:bg-zinc-900 scale-[1.02]" : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 bg-white/50 dark:bg-black/50"}`}
             >
               <div className="flex flex-col items-center gap-4">
                 <div className={`p-4 rounded-full transition-colors ${isDragging ? "bg-zinc-200 dark:bg-zinc-800" : "bg-zinc-100 dark:bg-zinc-900"}`}>
                    {isUploading ? <Loader2 className="w-8 h-8 animate-spin" /> : <UploadCloud className="w-8 h-8 text-zinc-400" />}
                 </div>
                 <div className="space-y-1">
-                  <p className="font-medium">
-                    {isUploading ? "Processing PDF..." : "Drag and drop your PDF here"}
-                  </p>
+                  <p className="font-medium">{isUploading ? "Processing PDF..." : "Drag and drop your PDF here"}</p>
                   <p className="text-sm text-zinc-400">or click to browse</p>
                 </div>
-                
-                <input 
-                  type="file" 
-                  accept=".pdf" 
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files.length > 0) processUpload(e.target.files[0]);
-                  }}
-                  disabled={isUploading}
-                />
+                <input type="file" accept=".pdf" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={(e) => { if (e.target.files?.length) processUpload(e.target.files[0]); }} disabled={isUploading} />
               </div>
             </div>
           </div>
         </main>
-
-        {/* Footer */}
         <footer className="py-8 border-t border-zinc-100 dark:border-zinc-800 relative z-10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
           <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
-            
-            {/* Left: Brand */}
             <div className="flex items-center gap-2">
               <div className="h-5 w-5 rounded bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center text-white dark:text-black font-bold text-[10px]">N</div>
               <span className="font-semibold text-sm tracking-tight text-zinc-500 dark:text-zinc-400">NoteWave</span>
             </div>
-
-            {/* Center: Made With Love */}
             <div className="flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50 px-4 py-2 rounded-full border border-zinc-100 dark:border-zinc-800">
               <span>Made with</span>
               <Heart className="w-3.5 h-3.5 text-red-500 fill-current animate-pulse" />
               <span>by</span>
-              <a 
-                href="https://enflect.tech/" 
-                target="_blank" 
-                className="font-medium text-zinc-900 dark:text-zinc-100 hover:underline decoration-zinc-400 underline-offset-2 transition-all"
-              >
-                Samarth Saxena
-              </a>
+              <a href="https://enflect.tech/" target="_blank" className="font-medium text-zinc-900 dark:text-zinc-100 hover:underline decoration-zinc-400 underline-offset-2 transition-all">Samarth Saxena</a>
             </div>
-
-            {/* Right: Socials */}
             <div className="flex items-center gap-6">
-              <a href="https://github.com/samarthsaxena" target="_blank" className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-2 text-sm">
-                <Github className="w-4 h-4" />
-              </a>
+              <a href="https://github.com/samarthsaxena" target="_blank" className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-2 text-sm"><Github className="w-4 h-4" /></a>
+              <a href="#" className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-2 text-sm"><Book className="w-4 h-4" /></a>
             </div>
           </div>
         </footer>
@@ -383,10 +316,22 @@ export default function Dashboard() {
   // VIEW 2: DASHBOARD (Active State)
   // ==========================================
   return (
-    <div className="h-screen flex bg-zinc-50 dark:bg-black overflow-hidden font-sans text-zinc-900 dark:text-zinc-100">
+    <div className="h-screen flex bg-zinc-50 dark:bg-black overflow-hidden font-sans text-zinc-900 dark:text-zinc-100 relative">
       
-      {/* 1. LEFT SIDEBAR */}
-      <div className="w-[280px] border-r border-zinc-200 dark:border-zinc-800 flex flex-col bg-white dark:bg-black z-20">
+      {/* MOBILE OVERLAY BACKDROP */}
+      {(showLeftSidebar || showRightSidebar) && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm"
+          onClick={() => { setShowLeftSidebar(false); setShowRightSidebar(false); }}
+        />
+      )}
+
+      {/* 1. LEFT SIDEBAR (Responsive) */}
+      <div className={`
+        fixed inset-y-0 left-0 z-40 w-[280px] bg-white dark:bg-black border-r border-zinc-200 dark:border-zinc-800 flex flex-col transition-transform duration-300 ease-in-out
+        md:translate-x-0 md:static md:w-[280px]
+        ${showLeftSidebar ? "translate-x-0" : "-translate-x-full"}
+      `}>
         <div className="h-16 flex items-center justify-between px-4 border-b border-zinc-100 dark:border-zinc-800/50">
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 rounded bg-zinc-900 dark:bg-white flex items-center justify-center text-white dark:text-black font-bold text-xs">N</div>
@@ -434,10 +379,7 @@ export default function Dashboard() {
                   <FileText className="w-4 h-4 flex-shrink-0 opacity-70" />
                   <span className="text-sm truncate">{doc.name}</span>
                 </div>
-                <Button
-                  size="icon" variant="ghost" className="opacity-0 group-hover:opacity-100 h-6 w-6 text-zinc-400 hover:text-red-500 hover:bg-transparent"
-                  onClick={(e) => handleDeleteFile(e, doc.id, doc.name)}
-                >
+                <Button size="icon" variant="ghost" className="opacity-0 group-hover:opacity-100 h-6 w-6 text-zinc-400 hover:text-red-500 hover:bg-transparent" onClick={(e) => handleDeleteFile(e, doc.id, doc.name)}>
                   <Trash2 className="w-3 h-3" />
                 </Button>
               </div>
@@ -447,15 +389,28 @@ export default function Dashboard() {
       </div>
 
       {/* 2. CENTER CHAT */}
-      <div className="flex-1 flex flex-col relative bg-zinc-50/50 dark:bg-black z-10">
-        <div className="h-16 flex items-center justify-center border-b border-zinc-200/50 dark:border-zinc-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm sticky top-0 z-20">
+      <div className="flex-1 flex flex-col relative bg-zinc-50/50 dark:bg-black z-10 w-full">
+        {/* Responsive Header */}
+        <div className="h-16 flex items-center justify-between px-4 border-b border-zinc-200/50 dark:border-zinc-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm sticky top-0 z-20">
+          
+          {/* Mobile Menu Button */}
+          <Button variant="ghost" size="icon" className="md:hidden text-zinc-500" onClick={() => setShowLeftSidebar(true)}>
+            <Menu className="w-5 h-5" />
+          </Button>
+
+          {/* Active File Label */}
           <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Current:</span>
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 hidden sm:inline">Current:</span>
             <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1">
               <FileText className="w-3 h-3" />
-              {activeDoc?.name}
+              <span className="max-w-[100px] truncate">{activeDoc?.name}</span>
             </span>
           </div>
+
+          {/* Mobile Audio Button */}
+          <Button variant="ghost" size="icon" className="lg:hidden text-zinc-500" onClick={() => setShowRightSidebar(true)}>
+            <Headphones className="w-5 h-5" />
+          </Button>
         </div>
 
         <ScrollArea className="flex-1">
@@ -517,8 +472,12 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 3. RIGHT SIDEBAR: STUDIO */}
-      <div className="w-[360px] border-l border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black flex flex-col z-20">
+      {/* 3. RIGHT SIDEBAR (Responsive) */}
+      <div className={`
+        fixed inset-y-0 right-0 z-40 w-[360px] bg-white dark:bg-black border-l border-zinc-200 dark:border-zinc-800 flex flex-col transition-transform duration-300 ease-in-out
+        lg:translate-x-0 lg:static lg:w-[360px]
+        ${showRightSidebar ? "translate-x-0" : "translate-x-full"}
+      `}>
         <div className="h-16 flex items-center justify-between px-6 border-b border-zinc-100 dark:border-zinc-800">
            <h2 className="text-sm font-semibold flex items-center gap-2">
              <Headphones className="w-4 h-4 text-zinc-500" /> Studio
