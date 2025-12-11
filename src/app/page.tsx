@@ -7,7 +7,8 @@ import { useTheme } from "next-themes";
 import { 
   FileText, Plus, Trash2, Moon, Sun, 
   Play, Pause, RefreshCw, ArrowUp, Loader2, 
-  Bot, User, Sparkles, Mic, Headphones, UploadCloud, Github, Twitter, Book
+  Bot, User, Sparkles, Mic, Headphones, UploadCloud, 
+  Github, Twitter, Book, Heart
 } from "lucide-react";
 
 // UI Components
@@ -23,7 +24,7 @@ import { Card } from "@/components/ui/card";
 export default function Dashboard() {
   const { setTheme, theme } = useTheme();
   
-  // HYDRATION FIX: Wait until mounted to render theme icons
+  // HYDRATION FIX
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -254,7 +255,6 @@ export default function Dashboard() {
             <span className="font-semibold text-sm tracking-tight">NoteWave</span>
           </div>
           <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-            {/* HYDRATION FIX: Only show icon when mounted */}
             {mounted ? (theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />) : <span className="w-4 h-4" />}
           </Button>
         </header>
@@ -314,21 +314,36 @@ export default function Dashboard() {
         </main>
 
         {/* Footer */}
-        <footer className="py-10 border-t border-zinc-100 dark:border-zinc-800 relative z-10">
+        <footer className="py-8 border-t border-zinc-100 dark:border-zinc-800 relative z-10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
           <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="group relative cursor-default">
-              <div className="absolute -inset-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg opacity-0 group-hover:opacity-20 blur-lg transition duration-500" />
-              <h2 className="text-2xl font-bold tracking-tighter relative z-10">NoteWave</h2>
+            
+            {/* Left: Brand */}
+            <div className="flex items-center gap-2">
+              <div className="h-5 w-5 rounded bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center text-white dark:text-black font-bold text-[10px]">N</div>
+              <span className="font-semibold text-sm tracking-tight text-zinc-500 dark:text-zinc-400">NoteWave</span>
             </div>
+
+            {/* Center: Made With Love */}
+            <div className="flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50 px-4 py-2 rounded-full border border-zinc-100 dark:border-zinc-800">
+              <span>Made with</span>
+              <Heart className="w-3.5 h-3.5 text-red-500 fill-current animate-pulse" />
+              <span>by</span>
+              <a 
+                href="https://enflect.tech/" 
+                target="_blank" 
+                className="font-medium text-zinc-900 dark:text-zinc-100 hover:underline decoration-zinc-400 underline-offset-2 transition-all"
+              >
+                Samarth Saxena
+              </a>
+            </div>
+
+            {/* Right: Socials */}
             <div className="flex items-center gap-6">
-              <a href="https://github.com" target="_blank" className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-2 text-sm font-medium">
-                <Github className="w-4 h-4" /> GitHub
+              <a href="https://github.com/samarthsaxena2004" target="_blank" className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-2 text-sm">
+                <Github className="w-4 h-4" />
               </a>
-              <a href="#" className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-2 text-sm font-medium">
-                <Twitter className="w-4 h-4" /> Twitter
-              </a>
-              <a href="#" className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-2 text-sm font-medium">
-                <Book className="w-4 h-4" /> Docs
+              <a href="https://x.com/enflect_" target="_blank" className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-2 text-sm">
+                <Twitter className="w-4 h-4" />
               </a>
             </div>
           </div>
