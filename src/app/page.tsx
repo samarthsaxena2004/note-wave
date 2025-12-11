@@ -345,8 +345,7 @@ export default function Dashboard() {
               <a href="https://enflect.tech/" target="_blank" className="font-medium text-zinc-900 dark:text-zinc-100 hover:underline decoration-zinc-400 underline-offset-2 transition-all">Samarth Saxena</a>
             </div>
             <div className="flex items-center gap-6">
-              <a href="https://github.com/samarthsaxena2004" target="_blank" className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-2 text-sm"><Github className="w-4 h-4" /></a>
-              <a href="#" className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-2 text-sm"><Book className="w-4 h-4" /></a>
+              <a href="https://github.com/samarthsaxena2004/note-wave" target="_blank" className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-2 text-sm"><Github className="w-4 h-4" />GitHub repository</a>
             </div>
           </div>
         </footer>
