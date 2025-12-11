@@ -1,6 +1,6 @@
 # 🌊 NoteWave
 
-**NoteWave** is an AI-powered "Second Brain" application inspired by Google's NotebookLM. It transforms static PDF documents into interactive conversations and engaging audio podcasts.
+**NoteWave** is an AI-powered application inspired by Google's NotebookLM. It transforms static PDF documents into interactive conversations and engaging audio podcasts.
 
 Built as a showcase of bleeding-edge **Full-Stack AI Engineering**, utilizing **Next.js 16**, Vector Search, and Multi-Modal LLMs.
 
@@ -48,12 +48,12 @@ A clean, welcoming drop-zone for new users to get started immediately.
 
 ## 🧠 System Architecture
 
-1.  **Ingestion Pipeline:**
-    * PDF is parsed -> Text is split into semantic chunks (1000 chars) -> Chunks are vectorized -> Vectors stored in Pinecone with metadata.
-2.  **Context-Aware Chat:**
-    * User query is embedded -> Pinecone finds top 10 relevant matches -> Llama 3 generates answer based *only* on those matches (reducing hallucinations).
-3.  **Podcast Generation:**
-    * Llama 3 writes a JSON-structured script -> Frontend iterates through the script -> Calls ElevenLabs for audio -> Plays chunks sequentially.
+1.  **Ingestion Pipeline:**
+    * PDF is parsed -> Text is split into semantic chunks (1000 chars) -> Chunks are vectorized -> Vectors stored in Pinecone with metadata.
+2.  **Context-Aware Chat:**
+    * User query is embedded -> Pinecone finds top 10 relevant matches -> Llama 3 generates answer based *only* on those matches (reducing hallucinations).
+3.  **Podcast Generation:**
+    * Llama 3 writes a JSON-structured script -> Frontend iterates through the script -> Calls ElevenLabs for audio -> Plays chunks sequentially.
 
 ## 🧪 Challenges & Learnings
 
@@ -67,29 +67,31 @@ Building this required solving several complex engineering problems:
 
 ## 🚀 How to Run Locally
 
-1.  **Clone the repo:**
-    ```bash
-    git clone [https://github.com/yourusername/notewave.git](https://github.com/yourusername/notewave.git)
-    cd notewave
-    ```
-2.  **Install dependencies:**
-    ```bash
-    npm install
-    ```
-3.  **Set Up Environment Variables:**
-    Create a `.env.local` file in the root directory and add your API keys:
-    ```env
-    GROQ_API_KEY=gsk_...
-    PINECONE_API_KEY=pcsk_...
-    PINECONE_INDEX_NAME=note-wave
-    HUGGINGFACE_API_KEY=hf_...
-    ELEVENLABS_API_KEY=sk_...
-    ```
-4.  **Run the Development Server:**
-    ```bash
-    npm run dev
-    ```
-    Open [http://localhost:3000](http://localhost:3000) in your browser.
+1.  **Clone the repo:**
+    ```bash
+    git clone [https://github.com/yourusername/notewave.git](https://github.com/yourusername/notewave.git)
+    cd notewave
+    ```
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
+3.  **Set Up Environment Variables:**
+    Create a `.env.local` file in the root directory and add your API keys:
+    ```env
+    GROQ_API_KEY=gsk_...
+    PINECONE_API_KEY=pcsk_...
+    PINECONE_INDEX_NAME=note-wave
+    HUGGINGFACE_API_KEY=hf_...
+    ELEVENLABS_API_KEY=sk_...
+    ```
+4.  **Run the Development Server:**
+    ```bash
+    npm run dev
+    ```
+    Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+> **Troubleshooting:** If the application fails due to a retired model or deprecated API call, please refer to the comprehensive debugging steps in the [`MAINTENANCE_GUIDE.md`](MAINTENANCE_GUIDE.md) file in the repository root.
 
 ---
 
@@ -97,11 +99,11 @@ Building this required solving several complex engineering problems:
 
 Contributions are welcome! If you have ideas for features (e.g., persistent database storage, user authentication), feel free to fork the repo and submit a PR.
 
-1.  Fork the Project
-2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4.  Push to the Branch (`git push origin feature/AmazingFeature`)
-5.  Open a Pull Request
+1.  Fork the Project
+2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4.  Push to the Branch (`git push origin feature/AmazingFeature`)
+5.  Open a Pull Request
 
 ---
 
