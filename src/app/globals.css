@@ -68,3 +68,18 @@
     @apply bg-zinc-950 text-zinc-100 p-4 rounded-xl my-4 overflow-x-auto border border-zinc-800;
   }
 }
+
+@layer utilities {
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+  .transform-style-3d {
+    transform-style: preserve-3d;
+  }
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+}
