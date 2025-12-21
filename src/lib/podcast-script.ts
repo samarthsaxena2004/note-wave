@@ -3,34 +3,50 @@ import Groq from "groq-sdk";
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function generatePodcastScript(text: string) {
-  console.log("📜 Generating podcast script...");
+  console.log("📜 Generating podcast script logic initiated...");
   
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error("GROQ_API_KEY is missing from environment variables.");
+  }
+
   const systemPrompt = `
   You are an expert podcast producer.
-  Your goal is to convert the provided text into a 2-minute engaging conversation script between two hosts: "Host" (enthusiastic, curious) and "Expert" (knowledgeable, calm).
+  Convert the provided text into an engaging 2-minute conversation between "Host" and "Expert".
   
-  Rules:
-  1. **Format**: Return ONLY a valid JSON array of objects. No markdown, no code blocks.
-     Format: [{"speaker": "Host", "text": "..."}, {"speaker": "Expert", "text": "..."}]
-  2. **Content**: Summarize the key points of the text but make it sound like a casual chat. Use phrases like "Whoa, really?", "Exactly!", "So basically...".
-  3. **Length**: Keep it around 10-12 exchanges total (short enough for a demo).
-  4. **Tone**: Fun, fast-paced, and educational.
+  STRICT RULES:
+  1. Return ONLY a JSON object with a key "script" containing an array of objects.
+  2. Format: {"script": [{"speaker": "Host", "text": "..."}, {"speaker": "Expert", "text": "..."}]}
+  3. No markdown, no conversational filler outside the JSON.
+  4. Use a fun, educational tone.
   `;
 
-  const completion = await groq.chat.completions.create({
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: `Here is the source text to adapt:\n\n${text.slice(0, 6000)}` } // Limit text to fit context
-    ],
-    model: "llama-3.3-70b-versatile",
-    response_format: { type: "json_object" }, // Force JSON mode
-  });
+  try {
+    const completion = await groq.chat.completions.create({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Adapt this source text into a script:\n\n${text.slice(0, 8000)}` }
+      ],
+      // Using a highly stable Llama 3.3 model ID
+      model: "llama-3.3-70b-versatile",
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+    });
 
-  const content = completion.choices[0].message.content || "{}";
-  // Parse the JSON to ensure it's valid
-  const script = JSON.parse(content);
-  
-  // Groq might wrap it in a root object like { "script": [...] } or just return the array.
-  // We normalize it here.
-  return Array.isArray(script) ? script : (script.dialogue || script.script || []);
+    const rawContent = completion.choices[0].message.content || "{}";
+    
+    // Defensive parsing: Strip potential markdown code blocks if the LLM ignores the format rule
+    const jsonString = rawContent.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(jsonString);
+    
+    const finalScript = parsed.script || parsed.dialogue || (Array.isArray(parsed) ? parsed : []);
+    
+    if (finalScript.length === 0) {
+      throw new Error("LLM returned an empty script array.");
+    }
+
+    return finalScript;
+  } catch (error: any) {
+    console.error("Error in generatePodcastScript:", error);
+    throw new Error(`Script Generation Failed: ${error.message}`);
+  }
 }
