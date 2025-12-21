@@ -13,7 +13,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 
-// Modular Components
 import SidebarLeft from "./SidebarLeft";
 import SidebarRight from "./SidebarRight";
 import CommandPalette from "./CommandPalette";
@@ -23,51 +22,34 @@ export default function DashboardPage() {
   const { setTheme, theme } = useTheme();
   const [mounted, setMounted] = useState(false);
   
-  // --- DATA STATE ---
   const [documents, setDocuments] = useState<any[]>([]); 
   const [activeDoc, setActiveDoc] = useState<any>(null);
-  
-  // --- CHAT STATE ---
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  
-  // --- VOICE STATE ---
   const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<any>(null);
-  
-  // --- PODCAST STATE ---
   const [podcastScript, setPodcastScript] = useState<any[]>([]);
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentLineIndex, setCurrentLineIndex] = useState<number | null>(null);
-  
-  // --- UI STATE ---
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [showLeftSidebar, setShowLeftSidebar] = useState(false);
   const [showRightSidebar, setShowRightSidebar] = useState(false);
-
-  // --- CLI STATE ---
   const [filteredCommands, setFilteredCommands] = useState<Command[]>([]);
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
 
-  // --- REFS ---
+  const recognitionRef = useRef<any>(null);
   const scriptViewportRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const stopSignalRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // --- AUTO-SCROLL LOGIC ---
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
+  // Smooth Auto-Scroll
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  // --- INITIALIZATION ---
   useEffect(() => {
     setMounted(true);
     const savedDocs = localStorage.getItem("notewave_docs");
@@ -86,7 +68,6 @@ export default function DashboardPage() {
     localStorage.setItem("notewave_docs", JSON.stringify(newDocs));
   };
 
-  // --- CLI LOGIC ---
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setInput(val);
@@ -138,7 +119,6 @@ export default function DashboardPage() {
     }
   };
 
-  // --- LOGIC: CHAT & ACTIONS ---
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim() || !activeDoc) return;
@@ -183,7 +163,6 @@ export default function DashboardPage() {
     } catch (error) { console.error(error); } finally { setIsLoading(false); }
   }
 
-  // --- ORIGINAL LOGIC HANDLERS ---
   async function processUpload(file: File) {
     const formData = new FormData();
     formData.append("file", file);
@@ -312,103 +291,91 @@ export default function DashboardPage() {
   if (!mounted) return null;
 
   return (
-    <div className="h-screen flex bg-zinc-50 dark:bg-black overflow-hidden font-sans text-zinc-900 dark:text-zinc-100 relative">
-      {(showLeftSidebar || showRightSidebar) && (
-        <div className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm" onClick={() => { setShowLeftSidebar(false); setShowRightSidebar(false); }} />
-      )}
-
+    <div className="h-screen flex bg-zinc-50 dark:bg-black overflow-hidden font-sans">
       <SidebarLeft 
         documents={documents} activeDoc={activeDoc} isUploading={isUploading} isUploadOpen={isUploadOpen}
         setIsUploadOpen={setIsUploadOpen} handleUploadForm={handleUploadForm} handleSwitchFile={handleSwitchFile}
         handleDeleteFile={handleDeleteFile} setTheme={setTheme} theme={theme} showLeftSidebar={showLeftSidebar}
       />
 
-      {/* --- CENTER CHAT SECTION --- */}
-      <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-black relative overflow-hidden">
+      {/* --- CENTER AREA: THE FIX --- */}
+      <div className="flex-1 flex flex-col h-full bg-white dark:bg-black relative overflow-hidden">
         
-        {/* FIXED HEADER: Does not move during scroll */}
-        <header className="h-16 flex-none flex items-center justify-between px-6 border-b border-zinc-200/50 dark:border-zinc-800 bg-white dark:bg-black z-30">
-          <Button variant="ghost" size="icon" className="md:hidden text-zinc-500" onClick={() => setShowLeftSidebar(true)}>
-            <div className="h-5 w-5 grid gap-1">
-              <span className="h-0.5 w-full bg-current rounded-full" />
-              <span className="h-0.5 w-full bg-current rounded-full" />
-              <span className="h-0.5 w-full bg-current rounded-full" />
-            </div>
+        {/* HEADER: Flex-none keeps it locked at top */}
+        <header className="h-16 flex-none flex items-center justify-between px-6 border-b border-zinc-100 dark:border-zinc-800 z-30">
+          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setShowLeftSidebar(true)}>
+            <FileText className="w-5 h-5" />
           </Button>
           
-          <div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 hidden sm:inline">Active Source</span>
-            <div className="h-3 w-px bg-zinc-300 dark:bg-zinc-700 hidden sm:inline" />
-            <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-              <FileText className="w-3.5 h-3.5 text-zinc-500" />
-              <span className="max-w-[120px] md:max-w-[180px] truncate">{activeDoc?.name}</span>
-            </span>
+          <div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Current Source</span>
+            <div className="h-3 w-px bg-zinc-200 dark:bg-zinc-700" />
+            <span className="text-xs font-semibold truncate max-w-[150px]">{activeDoc?.name}</span>
           </div>
 
-          <Button variant="ghost" size="icon" className="lg:hidden text-zinc-500" onClick={() => setShowRightSidebar(true)}>
-            <Mic className="w-5 h-5" />
+          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setShowRightSidebar(true)}>
+            <StopCircle className="w-5 h-5" />
           </Button>
         </header>
 
-        {/* CHAT VIEWPORT: flex-1 ensures it takes all available middle space */}
+        {/* MESSAGES: flex-1 takes remaining space and handles scroll */}
         <div className="flex-1 overflow-hidden relative">
-          <ScrollArea className="h-full w-full">
-            <div className="max-w-3xl mx-auto p-4 md:p-10 space-y-10">
-              {messages.length === 0 && (
-                <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-6 opacity-60">
-                  <h3 className="text-2xl font-semibold text-zinc-900 dark:text-white">What do you want to know?</h3>
-                  <p className="text-sm text-zinc-400">Type <span className="px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 font-mono">/</span> to explore tools</p>
-                </div>
-              )}
+          <ScrollArea className="h-full w-full custom-scrollbar">
+            <div className="max-w-3xl mx-auto px-6 py-10 space-y-12">
               {messages.map((m, i) => (
                 <div key={i} className={`flex gap-6 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                  <Avatar className={`h-8 w-8 mt-1 border flex-none ${m.role === 'user' ? 'border-zinc-200 dark:border-zinc-700' : 'border-transparent bg-transparent'}`}>
-                    <AvatarFallback className={m.role === 'user' ? 'bg-zinc-100 dark:bg-zinc-800 text-xs' : 'bg-transparent'}>
-                      {m.role === 'user' ? <User className="w-4 h-4 text-zinc-500" /> : <Bot className="w-5 h-5 text-zinc-900 dark:text-white" />}
+                  <Avatar className={`h-9 w-9 mt-1 flex-none ${m.role === 'user' ? 'border-zinc-200' : 'bg-zinc-900'}`}>
+                    <AvatarFallback className="text-xs">
+                      {m.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-5 h-5 text-white" />}
                     </AvatarFallback>
                   </Avatar>
-                  <div className={`flex-1 min-w-0 text-sm leading-7 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
-                    <div className={`${m.role === 'user' ? 'inline-block bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-4 py-2 rounded-2xl rounded-tr-sm font-medium break-words' : 'prose prose-sm prose-zinc dark:prose-invert max-w-none break-words'}`}>
-                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
-                    </div>
+                  
+                  <div className={`flex-1 min-w-0 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
+                    {m.role === 'user' ? (
+                      <div className="inline-block bg-zinc-100 dark:bg-zinc-900 px-5 py-3 rounded-2xl rounded-tr-sm text-sm font-medium">
+                        {m.content}
+                      </div>
+                    ) : (
+                      <div className="markdown-content">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {m.content}
+                        </ReactMarkdown>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
+              
               {isLoading && (
-                <div className="flex gap-6">
-                  <div className="w-8 flex justify-center"><Loader2 className="w-4 h-4 animate-spin text-zinc-400" /></div>
-                  <span className="text-sm text-zinc-400 animate-pulse">Thinking...</span>
+                <div className="flex gap-4 items-center opacity-50">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-xs font-medium">Analyzing document...</span>
                 </div>
               )}
               
-              {/* THE SPACER: Prevents input bar from overlapping last message */}
-              <div className="h-32" />
-              
-              {/* THE ANCHOR: The scroll target */}
-              <div ref={messagesEndRef} />
+              {/* Anchor for scroll */}
+              <div ref={messagesEndRef} className="h-20" />
             </div>
           </ScrollArea>
         </div>
 
-        {/* INPUT SECTION: Floating above with gradient transparency */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white dark:from-black via-white/80 dark:via-black/80 to-transparent pointer-events-none">
-          <div className="max-w-2xl mx-auto relative pointer-events-auto pb-4">
+        {/* INPUT: flex-none sits at bottom */}
+        <footer className="flex-none p-6 bg-gradient-to-t from-white dark:from-black via-white/90 dark:via-black/90 to-transparent">
+          <div className="max-w-2xl mx-auto relative pb-2">
             <CommandPalette commands={filteredCommands} selectedIndex={selectedCommandIndex} onSelect={executeCommand} />
-            <form id="chat-form" onSubmit={handleSubmit} className="relative shadow-2xl shadow-zinc-300/50 dark:shadow-none bg-white dark:bg-zinc-900 rounded-full transition-transform focus-within:scale-[1.01]">
+            <form id="chat-form" onSubmit={handleSubmit} className="relative group">
               <Input 
                 value={input} onChange={handleInputChange} onKeyDown={handleKeyDown}
-                placeholder="Ask anything or type /" 
-                className="h-14 pl-12 pr-12 rounded-full border-zinc-200 dark:border-zinc-800 bg-transparent text-base focus-visible:ring-1 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-700"
+                placeholder="Ask anything about the document..." 
+                className="h-14 pl-12 pr-14 rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl focus-visible:ring-zinc-500 transition-all"
               />
-              <Button type="button" onClick={toggleVoiceInput} variant="ghost" size="icon" className={`absolute left-2 top-2 h-10 w-10 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 ${isListening ? "text-red-500 animate-pulse" : "text-zinc-400"}`}>
-                {isListening ? <StopCircle className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-              </Button>
-              <Button type="submit" disabled={isLoading || !input.trim()} size="icon" className="absolute right-2 top-2 h-10 w-10 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black hover:bg-zinc-700 dark:hover:bg-zinc-200 disabled:opacity-50">
+              <Mic className={`absolute left-4 top-4 w-5 h-5 cursor-pointer hover:text-zinc-900 ${isListening ? 'text-red-500 animate-pulse' : 'text-zinc-400'}`} onClick={toggleVoiceInput} />
+              <Button type="submit" disabled={isLoading || !input.trim()} size="icon" className="absolute right-2 top-2 h-10 w-10 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-black">
                 <ArrowUp className="w-5 h-5" />
               </Button>
             </form>
           </div>
-        </div>
+        </footer>
       </div>
 
       <SidebarRight 
