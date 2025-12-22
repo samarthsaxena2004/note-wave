@@ -2,11 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
-import { Sun, Moon, UploadCloud, Loader2, Github, Heart } from "lucide-react";
+import { Sun, Moon, UploadCloud, Loader2, Github, Heart, User as UserIcon, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/auth-provider";
+import { AuthModal } from "@/components/auth/AuthModal";
 
 export default function LandingPage() {
   const { setTheme, theme } = useTheme();
+  const { user, signOut } = useAuth(); // Destructured signOut for functional logout
   const [mounted, setMounted] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -24,7 +27,7 @@ export default function LandingPage() {
       const newDoc = { id: Date.now(), name: data.filename, date: "Just now" };
       const savedDocs = JSON.parse(localStorage.getItem("notewave_docs") || "[]");
       localStorage.setItem("notewave_docs", JSON.stringify([...savedDocs, newDoc]));
-      window.location.reload(); // Refresh to trigger the RootPage router
+      window.location.reload(); 
     } catch (err: any) {
       alert("Error: " + err.message);
     } finally {
@@ -48,9 +51,39 @@ export default function LandingPage() {
           <div className="h-6 w-6 rounded bg-black dark:bg-white flex items-center justify-center text-white dark:text-black font-bold text-xs">N</div>
           <span className="font-semibold text-sm tracking-tight">NoteWave</span>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-          {mounted ? (theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />) : <span className="w-4 h-4" />}
-        </Button>
+        
+        <div className="flex items-center gap-4">
+          {!mounted ? null : user ? (
+            <div className="flex items-center gap-3">
+              {/* Authenticated User Badge */}
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                <UserIcon className="w-3.5 h-3.5 text-zinc-500" />
+                <span className="text-xs font-medium truncate max-w-[150px]">{user.email}</span>
+              </div>
+              {/* Explicit Sign Out Button */}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => signOut()} 
+                className="text-xs font-bold text-zinc-500 hover:text-red-500 gap-2 transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Sign Out
+              </Button>
+            </div>
+          ) : (
+            /* Auth Modal Trigger */
+            <AuthModal trigger={
+              <Button variant="outline" size="sm" className="rounded-full px-6 h-9 text-xs font-bold bg-zinc-900 text-white dark:bg-white dark:text-black hover:opacity-90 transition-opacity">
+                Sign In
+              </Button>
+            } />
+          )}
+
+          <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+            {mounted ? (theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />) : <span className="w-4 h-4" />}
+          </Button>
+        </div>
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center p-6 relative overflow-hidden">
