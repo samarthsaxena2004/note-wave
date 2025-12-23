@@ -1,6 +1,9 @@
 import { 
-  Mic, BookOpen, LayoutList, HelpCircle, 
-  Image as ImageIcon, Video, Headphones 
+  Headphones, 
+  LayoutList, 
+  GraduationCap, 
+  Mic, 
+  BookOpen 
 } from "lucide-react";
 
 export interface Command {
@@ -18,33 +21,27 @@ export const COMMANDS: Command[] = [
     icon: Headphones,
   },
   {
-    id: "summary",
-    label: "/summary",
-    description: "Create a structured executive summary",
-    icon: BookOpen,
+    id: "flashcards",
+    label: "/flashcards",
+    description: "Extract core study concepts",
+    icon: LayoutList,
   },
   {
     id: "quiz",
     label: "/quiz",
     description: "Generate an adaptive learning quiz",
-    icon: HelpCircle,
+    icon: GraduationCap,
   },
   {
-    id: "flashcards",
-    label: "/flashcards",
-    description: "Extract key concepts into flashcards",
-    icon: LayoutList,
+    id: "voice",
+    label: "/voice",
+    description: "Talk to your document via Deepgram",
+    icon: Mic,
   },
   {
-    id: "image",
-    label: "/image",
-    description: "Generate visual aids for this topic",
-    icon: ImageIcon,
-  },
-  {
-    id: "video",
-    label: "/video",
-    description: "Generate a short explanatory video",
-    icon: Video,
+    id: "summary",
+    label: "/summary",
+    description: "Create a structured executive summary",
+    icon: BookOpen,
   },
 ];
