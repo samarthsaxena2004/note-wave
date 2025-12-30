@@ -1,8 +1,8 @@
 # 🌊 NoteWave
 
-**NoteWave** is an AI-powered "Second Brain" application inspired by Google's NotebookLM. It transforms static PDF documents into interactive research hubs, engaging audio podcasts, and specialized study tools.
+**NoteWave** is an AI-powered "Second Brain" and immersive research ecosystem. It transforms static PDF documents into dynamic knowledge graphs, interactive research studios, and voice-enabled learning environments.
 
-Built as a showcase of bleeding-edge **Full-Stack AI Engineering**, utilizing **Next.js 16**, Vector Search, and high-integrity LLM orchestration.
+Built with **Next.js 16 (Turbopack)**, NoteWave utilizes high-integrity LLM orchestration, vector search, and real-time audio processing to redefine document interaction.
 
 ## ⚠️ Important Notice
 
@@ -12,14 +12,29 @@ The publicly deployed version is intended as a portfolio demo. Because it relies
 
 ---
 
-## 🚀 What It Does (v2.0)
+## 🚀 The Intelligence Studios (v4.0)
 
-* **📄 RAG-Powered Chat:** Upload any PDF and chat with it. The AI cites its sources by finding relevant context using Vector Search (Pinecone).
-* **🎙️ Podcast Studio:** Generates a scripted "Deep Dive" audio conversation between two AI hosts who discuss the uploaded content.
-* **🧠 Flashcard Studio:** AI-driven concept extraction with a custom 3D flip UI. Includes a **Creator Mode** for adding manual study cards.
-* **✨ Studio Hub (Zero Stage):** A specialized landing state for the sidebar that showcases available AI tools and their capabilities when no tool is active.
-* **↔️ Fluid 3-Column Layout:** A modern UI where the Chat Assistant remains centered while sidebars can be collapsed or expanded (Wide Mode) for deep focus.
-* **⚡ High-Integrity Assistant:** A hardened system prompt ensures the AI remains professional, honest, and resistant to adversarial "jailbreak" attempts.
+NoteWave is organized into specialized "Studios," each designed for a specific cognitive task:
+
+* **📄 RAG-Powered Chat:** Professional document analysis with semantic source citing using **Pinecone** and **Groq (Llama 3.3 70B)**.
+* **🎙️ Podcast Studio:** Generates an engaging audio deep-dive conversation between AI hosts. Supports MP3 downloads and real-time script tracking.
+* **🧠 Flashcard Studio:** AI-driven concept extraction with a 3D flip UI and "Creator Mode" for manual additions.
+* **⚡ Knowledge Graph:** A **3D Force-Directed Graph** that visualizes the relationship between concepts found in your research.
+* **⚖️ Agentic Debate:** A multi-persona research environment where *Dr. Skeptic*, *The Weaver*, and *Veritas* debate the core thesis of your files.
+* **🛡️ Verified Vault:** An integrity auditor that scans documents for bias, logical fallacies, and "hallucination" scores.
+* **📝 Quiz Studio:** Adaptive learning module that generates custom assessments and provides detailed mastery reports.
+* **🎤 Voice Immersion:** A hands-free mode using **Deepgram Nova-2** for speech-to-text and **OpenAI TTS-1** for neural voice replies.
+
+---
+
+## ✨ Immersive Features
+
+* **Adaptive Settings Studio:** Houses a **Bio-Adaptive Profile** that tracks cognitive load and suggests learning styles (Kinesthetic, Visual, etc.).
+* **Focus Mode:** A UI transformation that dims background elements and simplifies the workspace for deep work.
+* **Command Orchestration:** A global `/` command palette with full keyboard navigation for instant studio switching.
+* **Local Persistence:** All session settings and document metadata are synced to `localStorage` for privacy-first continuity.
+
+---
 
 ## 📸 Interface Preview
 
@@ -37,13 +52,13 @@ A professional directory that guides users through the available AI specialized 
 
 ## 🛠️ Tech Stack
 
-* **Frontend:** [Next.js 16 (Turbopack)](https://nextjs.org/) - *Utilizing the latest React features.*
-* **Language:** TypeScript
-* **Styling:** Tailwind CSS, Shadcn/UI, Lucide React
-* **AI Engine:** Llama 3.3 70B (via Groq) for high-speed, low-latency reasoning
-* **Vector DB:** Pinecone (Serverless) for semantic retrieval
+* **Core:** [Next.js 16](https://nextjs.org/), TypeScript, Tailwind CSS, Shadcn/UI
+* **Intelligence:** Llama 3.3 70B via **Groq**
+* **Vector Engine:** **Pinecone** (Serverless)
 * **Embeddings:** Hugging Face (`all-MiniLM-L6-v2`)
-* **Audio Engine:** ElevenLabs API for neural speech synthesis
+* **Voice STT:** **Deepgram** Nova-2 (Sub-300ms latency)
+* **Voice TTS:** **OpenAI** TTS-1 / ElevenLabs
+* **Spatial UI:** `react-force-graph-3d` & Three.js
 
 ## 🧠 System Architecture
 
@@ -57,41 +72,49 @@ A professional directory that guides users through the available AI specialized 
 * **Streaming Synchronization:** Solved "text stuttering" in streaming responses by implementing an accumulator pattern and `TextDecoder` stream handling.
 * **Layout Fluidity:** Engineered a resizable sidebar system that maintains perfectly straight header margins across three columns.
 * **Conversational Awareness:** Fine-tuned the system prompt to handle professional greetings (e.g., "Hello") while maintaining strict document-only research integrity.
-
 ---
 
 ## 🚀 How to Run Locally
 
-1.  **Clone the repo:**
+1.  **Clone & Install:**
     ```bash
-    git clone [https://github.com/yourusername/notewave.git](https://github.com/yourusername/notewave.git)
-    cd notewave
-    ```
-2.  **Install dependencies:**
-    ```bash
+    git clone [https://github.com/samarthsaxena2004/note-wave.git](https://github.com/samarthsaxena2004/note-wave.git)
+    cd note-wave
     npm install
     ```
-3.  **Set Up Environment Variables (`.env.local`):**
+
+2.  **Environment Variables (`.env.local`):**
     ```env
-    GROQ_API_KEY=gsk_...
-    PINECONE_API_KEY=pcsk_...
+    GROQ_API_KEY=your_key
+    PINECONE_API_KEY=your_key
     PINECONE_INDEX_NAME=note-wave
-    HUGGINGFACE_API_KEY=hf_...
-    ELEVENLABS_API_KEY=sk_...
+    HUGGINGFACE_API_KEY=your_key
+    DEEPGRAM_API_KEY=your_key
+    OPENAI_API_KEY=your_key
+    ELEVENLABS_API_KEY=your_key
     ```
-4.  **Run Development Server:**
+
+3.  **Install Radix Primitives (If missing):**
+    ```bash
+    npx shadcn-ui@latest add switch progress dialog badge
+    ```
+
+4.  **Run:**
     ```bash
     npm run dev
     ```
     Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 > **Troubleshooting:** If the application fails due to a retired model or deprecated API call, please refer to the comprehensive debugging steps in the [`MAINTENANCE_GUIDE.md`](MAINTENANCE_GUIDE.md) file in the repository root.
-
 ---
 
 ## 🔮 Roadmap
-* **Phase 3:** Interactive Quiz Studio with real-time scoring and leaderboard.
-* **Phase 4:** Summary Studio for condensing deep research into executive briefs.
+
+- [x] **Phase 3 (Personalization):** Quiz Studio, Mastery Tracking, and Settings Studio.
+- [x] **Phase 4 (Immersion):** Functional Voice-to-Concept (V2C) and Neural TTS.
+- [ ] **Phase 5 (Synthesis):** Recursive multi-document summaries and Insight Export (PDF/Markdown).
+- [ ] **Phase 6 (Sovereignty):** Cloud Sync via Supabase and user authentication.
+- [ ] **Phase 7 (Neural Performance):** Edge deployment and local LLM fallback (Ollama).
 
 ---
 
