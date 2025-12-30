@@ -30,6 +30,13 @@ export default function DashboardPage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
+  // --- APPLICATION SETTINGS (PHASE 3/4) ---
+  const [appSettings, setAppSettings] = useState({
+    focusMode: false,
+    autoAudit: true,
+    spacedRepetition: false,
+  });
+
   // --- STUDIO STATES ---
   const [activeStudio, setActiveStudio] = useState<StudioType>("none");
   const [podcastScript, setPodcastScript] = useState<any[]>([]);
@@ -45,8 +52,6 @@ export default function DashboardPage() {
   const [isDebating, setIsDebating] = useState(false);
   const [vaultAudit, setVaultAudit] = useState<any>(null);
   const [isAuditing, setIsAuditing] = useState(false);
-
-  // Phase 3 Quiz State
   const [quizQuestions, setQuizQuestions] = useState<any[]>([]);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
 
@@ -67,8 +72,11 @@ export default function DashboardPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
+  // INITIALIZATION & PERSISTENCE
   useEffect(() => {
     setMounted(true);
+    
+    // Load Docs
     const savedDocs = localStorage.getItem("notewave_docs");
     if (savedDocs) {
       try {
@@ -79,7 +87,18 @@ export default function DashboardPage() {
         }
       } catch (e) { console.error("Storage Error:", e); }
     }
+
+    // Load App Settings
+    const savedSettings = localStorage.getItem("notewave_settings");
+    if (savedSettings) {
+      try { setAppSettings(JSON.parse(savedSettings)); } catch (e) { console.error(e); }
+    }
   }, []);
+
+  // Save Settings when they change
+  useEffect(() => {
+    if (mounted) localStorage.setItem("notewave_settings", JSON.stringify(appSettings));
+  }, [appSettings, mounted]);
 
   const saveDocsToStorage = (newDocs: any[]) => {
     localStorage.setItem("notewave_docs", JSON.stringify(newDocs));
@@ -87,7 +106,7 @@ export default function DashboardPage() {
 
   // --- STUDIO HANDLERS ---
   async function handleGenerateGraph() {
-    if (!activeDoc) return alert("Select a document first.");
+    if (!activeDoc) return;
     setIsGeneratingGraph(true);
     try {
       const res = await fetch("/api/graph/extract", {
@@ -101,7 +120,7 @@ export default function DashboardPage() {
   }
 
   async function handleStartDebate() {
-    if (!activeDoc) return alert("Select a document first.");
+    if (!activeDoc) return;
     setIsDebating(true);
     try {
       const res = await fetch("/api/debate", {
@@ -115,7 +134,7 @@ export default function DashboardPage() {
   }
 
   async function handleVaultAudit() {
-    if (!activeDoc) return alert("Select a document first.");
+    if (!activeDoc) return;
     setIsAuditing(true);
     try {
       const res = await fetch("/api/vault/audit", {
@@ -129,7 +148,7 @@ export default function DashboardPage() {
   }
 
   async function handleGenerateQuiz(count: number = 5) {
-    if (!activeDoc) return alert("Select a document first.");
+    if (!activeDoc) return;
     setIsGeneratingQuiz(true);
     try {
       const res = await fetch("/api/quiz", {
@@ -234,7 +253,7 @@ export default function DashboardPage() {
   if (!mounted) return null;
 
   return (
-    <div className="h-screen flex bg-white dark:bg-black overflow-hidden font-sans">
+    <div className={`h-screen flex bg-white dark:bg-black overflow-hidden font-sans transition-all duration-700 ${appSettings.focusMode ? 'grayscale-[0.8] brightness-90' : ''}`}>
       <SidebarLeft 
         documents={documents} activeDoc={activeDoc} isUploading={isUploading} isUploadOpen={isUploadOpen}
         setIsUploadOpen={setIsUploadOpen} handleUploadForm={async (e) => {
@@ -245,9 +264,10 @@ export default function DashboardPage() {
           const formData = new FormData(); formData.append("file", file);
           const res = await fetch("/api/ingest", { method: "POST", body: formData });
           const data = await res.json();
-          const updated = [...documents, { id: Date.now(), name: data.filename }];
+          const updated = [...documents, { id: Date.now(), name: data.filename, mastery: 0 }];
           setDocuments(updated); saveDocsToStorage(updated); setActiveDoc(updated[updated.length-1]);
           setIsUploading(false); setIsUploadOpen(false);
+          if (appSettings.autoAudit) handleVaultAudit();
         }}
         handleSwitchFile={(doc) => { 
           setActiveDoc(doc); setMessages([]); setActiveStudio("none"); 
@@ -256,6 +276,10 @@ export default function DashboardPage() {
         handleDeleteFile={(e, id, name) => { e.stopPropagation(); const updated = documents.filter(d => d.id !== id); setDocuments(updated); saveDocsToStorage(updated); }}
         setTheme={setTheme} theme={theme} showLeftSidebar={showLeftSidebar} isWide={leftSidebarWide}
         toggleSidebar={() => setShowLeftSidebar(!showLeftSidebar)}
+        onOpenSettings={() => {
+          setActiveStudio("settings");
+          setShowRightSidebar(true);
+        }}
       />
 
       <div className="flex-1 flex flex-col h-full bg-white dark:bg-black relative overflow-hidden transition-all duration-500">
@@ -288,7 +312,7 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-hidden relative">
+        <div className={`flex-1 overflow-hidden relative transition-opacity duration-1000 ${appSettings.focusMode ? 'opacity-40' : 'opacity-100'}`}>
           <ScrollArea className="h-full w-full">
             <div className="max-w-3xl mx-auto px-6 py-10 space-y-12">
               {messages.length === 0 && (
@@ -315,7 +339,7 @@ export default function DashboardPage() {
           </ScrollArea>
         </div>
 
-        <footer className="flex-none p-6">
+        <footer className={`flex-none p-6 transition-all duration-1000 ${appSettings.focusMode ? 'translate-y-20 opacity-0' : 'translate-y-0 opacity-100'}`}>
           <div className="max-w-2xl mx-auto relative">
             <CommandPalette commands={filteredCommands} selectedIndex={selectedCommandIndex} onSelect={executeCommand} />
             <form onSubmit={handleSubmit} className="relative group">
@@ -341,6 +365,12 @@ export default function DashboardPage() {
         debateProps={{ transcript: debateTranscript, isLoading: isDebating, onRestart: handleStartDebate, onClose: () => setActiveStudio("none") }}
         vaultProps={{ audit: vaultAudit, isLoading: isAuditing, onAudit: handleVaultAudit, onClose: () => setActiveStudio("none") }}
         quizProps={{ fileId: activeDoc?.name || "Document", questions: quizQuestions, isLoading: isGeneratingQuiz, onGenerate: handleGenerateQuiz, onClose: () => setActiveStudio("none") }}
+        voiceProps={{ onTranscription: (text: string) => console.log(text), onClose: () => setActiveStudio("none") }}
+        settingsProps={{ 
+          settings: appSettings, 
+          onUpdate: (newSettings: any) => setAppSettings(newSettings),
+          onClose: () => setActiveStudio("none")
+        }}
       />
     </div>
   );

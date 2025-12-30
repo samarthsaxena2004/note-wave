@@ -2,15 +2,18 @@
 "use client";
 
 import React from "react";
-import { Sparkles, Headphones, LayoutList, BrainCircuit, MessageSquare, Zap, ShieldCheck } from "lucide-react";
+import { Sparkles, Headphones, LayoutList, BrainCircuit, MessageSquare, Zap, ShieldCheck, Mic, Settings2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import PodcastStudio from "./studios/PodcastStudio";
 import FlashcardsStudio from "./studios/FlashcardsStudio";
 import GraphStudio from "./studios/GraphStudio";
 import DebateStudio from "./studios/DebateStudio";
 import VaultStudio from "./studios/VaultStudio";
 import QuizStudio from "./studios/QuizStudio";
+import VoiceStudio from "./studios/VoiceStudio";
+import SettingsStudio from "./studios/SettingsStudio";
 
-export type StudioType = "podcast" | "flashcards" | "graph" | "debate" | "vault" | "quiz" | "summary" | "none";
+export type StudioType = "podcast" | "flashcards" | "graph" | "debate" | "vault" | "quiz" | "voice" | "settings" | "summary" | "none";
 
 interface SidebarRightProps {
   activeStudio: StudioType;
@@ -22,7 +25,9 @@ interface SidebarRightProps {
   graphProps: any;
   debateProps: any;
   vaultProps: any;
-  quizProps: any; // Added
+  quizProps: any;
+  voiceProps: any;
+  settingsProps: any; // Added for Phase 3/4
 }
 
 export default function SidebarRight({
@@ -34,7 +39,9 @@ export default function SidebarRight({
   graphProps,
   debateProps,
   vaultProps,
-  quizProps
+  quizProps,
+  voiceProps,
+  settingsProps
 }: SidebarRightProps) {
   const widthClass = !showRightSidebar ? "w-0 border-l-0" : isWide ? "w-[650px]" : "w-[360px]";
 
@@ -43,7 +50,7 @@ export default function SidebarRight({
       <div className={`flex flex-col h-full overflow-hidden ${!showRightSidebar ? "opacity-0 invisible" : "opacity-100 visible"}`}>
         
         {activeStudio === "none" && (
-          <div className="flex-1 flex flex-col p-8 space-y-8 justify-center">
+          <div className="flex-1 flex flex-col p-8 space-y-8 justify-center overflow-y-auto">
             <div className="space-y-2">
               <div className="h-10 w-10 rounded-xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center mb-4">
                 <Sparkles className="w-5 h-5 text-zinc-900 dark:text-white" />
@@ -53,11 +60,12 @@ export default function SidebarRight({
             </div>
 
             <div className="grid gap-3">
-              <FeatureItem icon={<BrainCircuit className="w-4 h-4" />} title="Adaptive Quiz" desc="Test and track mastery" />
-              <FeatureItem icon={<MessageSquare className="w-4 h-4" />} title="Agentic Debate" desc="Multi-persona analysis" />
-              <FeatureItem icon={<ShieldCheck className="w-4 h-4" />} title="Verified Vault" desc="Truth audits & bias scores" />
-              <FeatureItem icon={<Zap className="w-4 h-4" />} title="Knowledge Graph" desc="3D interaction with concepts" />
+              <FeatureItem icon={<Mic className="w-4 h-4 text-blue-500" />} title="Voice Immersion" desc="Talk to your document mode" />
+              <FeatureItem icon={<BrainCircuit className="w-4 h-4 text-emerald-500" />} title="Adaptive Quiz" desc="Test and track mastery" />
+              <FeatureItem icon={<MessageSquare className="w-4 h-4 text-purple-500" />} title="Agentic Debate" desc="Multi-persona analysis" />
+              <FeatureItem icon={<ShieldCheck className="w-4 h-4 text-zinc-400" />} title="Verified Vault" desc="Truth audits & bias scores" />
             </div>
+            
             <p className="text-[10px] text-zinc-400 font-medium uppercase tracking-widest text-center pt-4">Type / to launch</p>
           </div>
         )}
@@ -68,11 +76,14 @@ export default function SidebarRight({
         {activeStudio === "debate" && <DebateStudio {...debateProps} />}
         {activeStudio === "vault" && <VaultStudio {...vaultProps} />}
         {activeStudio === "quiz" && <QuizStudio {...quizProps} />}
+        {activeStudio === "voice" && <VoiceStudio {...voiceProps} />}
+        {activeStudio === "settings" && <SettingsStudio {...settingsProps} />}
 
-        {!["podcast", "flashcards", "graph", "debate", "vault", "quiz", "none"].includes(activeStudio) && (
+        {!["podcast", "flashcards", "graph", "debate", "vault", "quiz", "voice", "settings", "none"].includes(activeStudio) && (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
             <h3 className="text-sm font-bold uppercase tracking-widest">{activeStudio} Studio</h3>
             <p className="text-xs text-zinc-500 italic">This studio is currently under maintenance.</p>
+            <Button variant="outline" onClick={() => podcastProps.onClose()} className="rounded-full h-8 text-[10px] px-6 uppercase font-bold">Back to Hub</Button>
           </div>
         )}
       </div>
@@ -83,7 +94,7 @@ export default function SidebarRight({
 function FeatureItem({ icon, title, desc }: { icon: React.ReactNode, title: string, desc: string }) {
   return (
     <div className="flex items-start gap-4 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20">
-      <div className="mt-0.5 text-zinc-400">{icon}</div>
+      <div className="mt-0.5">{icon}</div>
       <div className="space-y-0.5">
         <p className="text-xs font-bold">{title}</p>
         <p className="text-[10px] text-zinc-500 leading-tight">{desc}</p>
