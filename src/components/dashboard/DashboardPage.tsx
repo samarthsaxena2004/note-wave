@@ -1,3 +1,4 @@
+// FILE: src/components/dashboard/DashboardPage.tsx
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -22,15 +23,12 @@ export default function DashboardPage() {
   const { setTheme, theme } = useTheme();
   const [mounted, setMounted] = useState(false);
   
-  // --- CORE STATE ---
   const [documents, setDocuments] = useState<any[]>([]); 
   const [activeDoc, setActiveDoc] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isListening, setIsListening] = useState(false);
   
-  // Studio States: Initialized to "none" for the Zero Stage
   const [activeStudio, setActiveStudio] = useState<StudioType>("none");
   const [podcastScript, setPodcastScript] = useState<any[]>([]);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
@@ -40,7 +38,10 @@ export default function DashboardPage() {
   const [flashcards, setFlashcards] = useState<any[]>([]);
   const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false);
 
-  // UI Visibility States
+  // --- PHASE 1 GRAPH STATE ---
+  const [graphData, setGraphData] = useState<any>(null);
+  const [isGeneratingGraph, setIsGeneratingGraph] = useState(false);
+
   const [showLeftSidebar, setShowLeftSidebar] = useState(true);
   const [showRightSidebar, setShowRightSidebar] = useState(true);
   const [leftSidebarWide, setLeftSidebarWide] = useState(false);
@@ -51,7 +52,6 @@ export default function DashboardPage() {
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
 
   const scriptViewportRef = useRef<HTMLDivElement>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -75,6 +75,20 @@ export default function DashboardPage() {
   const saveDocsToStorage = (newDocs: any[]) => {
     localStorage.setItem("notewave_docs", JSON.stringify(newDocs));
   };
+
+  async function handleGenerateGraph() {
+    if (!activeDoc) return;
+    setIsGeneratingGraph(true);
+    try {
+      const res = await fetch("/api/graph/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileId: activeDoc.name }),
+      });
+      const data = await res.json();
+      setGraphData(data);
+    } catch (err) { console.error(err); } finally { setIsGeneratingGraph(false); }
+  }
 
   async function handleGenerateFlashcards() {
     if (!activeDoc) return;
@@ -108,9 +122,9 @@ export default function DashboardPage() {
     setFilteredCommands([]);
     setActiveStudio(cmd.id as StudioType);
     setShowRightSidebar(true);
-    // REMOVED: isFocusMode logic to keep Chat at centre
     if (cmd.id === "flashcards") handleGenerateFlashcards();
     if (cmd.id === "podcast") handleGenerateScript();
+    if (cmd.id === "graph") handleGenerateGraph();
     setInput("");
   };
 
@@ -180,7 +194,7 @@ export default function DashboardPage() {
           setDocuments(updated); saveDocsToStorage(updated); setActiveDoc(updated[updated.length-1]);
           setIsUploading(false); setIsUploadOpen(false);
         }}
-        handleSwitchFile={(doc) => { setActiveDoc(doc); setMessages([]); setActiveStudio("none"); }}
+        handleSwitchFile={(doc) => { setActiveDoc(doc); setMessages([]); setActiveStudio("none"); setGraphData(null); }}
         handleDeleteFile={(e, id, name) => { e.stopPropagation(); const updated = documents.filter(d => d.id !== id); setDocuments(updated); saveDocsToStorage(updated); }}
         setTheme={setTheme} theme={theme} showLeftSidebar={showLeftSidebar} isWide={leftSidebarWide}
         toggleSidebar={() => setShowLeftSidebar(!showLeftSidebar)}
@@ -267,6 +281,7 @@ export default function DashboardPage() {
         toggleSidebar={() => setShowRightSidebar(!showRightSidebar)}
         podcastProps={{ script: podcastScript, audioChunks, isGenerating: isGeneratingScript, isPlaying, currentLineIndex, onGenerate: handleGenerateScript, onTogglePlayback: () => setIsPlaying(!isPlaying), viewportRef: scriptViewportRef }}
         flashcardProps={{ cards: flashcards, isLoading: isGeneratingFlashcards, onGenerate: handleGenerateFlashcards }}
+        graphProps={{ data: graphData, isLoading: isGeneratingGraph, onNodeClick: (node: any) => console.log("Synthesizing node:", node) }}
       />
     </div>
   );

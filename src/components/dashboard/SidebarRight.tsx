@@ -1,11 +1,13 @@
+// FILE: src/components/dashboard/SidebarRight.tsx
 "use client";
 
 import React from "react";
-import { Sparkles, Headphones, LayoutList, BrainCircuit, MessageSquare, Image as ImageIcon } from "lucide-react";
+import { Sparkles, Headphones, LayoutList, BrainCircuit, MessageSquare, Zap } from "lucide-react";
 import PodcastStudio from "./studios/PodcastStudio";
 import FlashcardsStudio from "./studios/FlashcardsStudio";
+import GraphStudio from "./studios/GraphStudio";
 
-export type StudioType = "podcast" | "flashcards" | "quiz" | "summary" | "image" | "video" | "none";
+export type StudioType = "podcast" | "flashcards" | "graph" | "quiz" | "summary" | "none";
 
 interface SidebarRightProps {
   activeStudio: StudioType;
@@ -14,6 +16,7 @@ interface SidebarRightProps {
   toggleSidebar: () => void;
   podcastProps?: any;
   flashcardProps?: any;
+  graphProps?: any;
 }
 
 export default function SidebarRight({
@@ -22,6 +25,7 @@ export default function SidebarRight({
   isWide,
   podcastProps = {},
   flashcardProps = {},
+  graphProps = {},
 }: SidebarRightProps) {
   const widthClass = !showRightSidebar ? "w-0 border-l-0" : isWide ? "w-[650px]" : "w-[360px]";
 
@@ -29,7 +33,6 @@ export default function SidebarRight({
     <div className={`relative h-full bg-white dark:bg-black border-l border-zinc-200 dark:border-zinc-800 flex flex-col transition-all duration-300 ease-in-out ${widthClass}`}>
       <div className={`flex flex-col h-full overflow-hidden ${!showRightSidebar ? "opacity-0 invisible" : "opacity-100 visible"}`}>
         
-        {/* ZERO STAGE: Show when no studio is active */}
         {activeStudio === "none" && (
           <div className="flex-1 flex flex-col p-8 space-y-8 justify-center">
             <div className="space-y-2">
@@ -41,10 +44,10 @@ export default function SidebarRight({
             </div>
 
             <div className="grid gap-3">
+              <FeatureItem icon={<Zap className="w-4 h-4" />} title="Knowledge Graph" desc="3D interaction with concepts" />
               <FeatureItem icon={<Headphones className="w-4 h-4" />} title="Podcast" desc="Turn text into engaging audio" />
               <FeatureItem icon={<LayoutList className="w-4 h-4" />} title="Flashcards" desc="Extract key study concepts" />
               <FeatureItem icon={<BrainCircuit className="w-4 h-4" />} title="Quiz" desc="Test your knowledge" />
-              <FeatureItem icon={<MessageSquare className="w-4 h-4" />} title="Summary" desc="Condense deep research" />
             </div>
             
             <p className="text-[10px] text-zinc-400 font-medium uppercase tracking-widest text-center pt-4">Type / to launch</p>
@@ -67,8 +70,15 @@ export default function SidebarRight({
           />
         )}
 
-        {/* Placeholder for others */}
-        {!["podcast", "flashcards", "none"].includes(activeStudio) && (
+        {activeStudio === "graph" && (
+          <GraphStudio 
+            data={graphProps.data} 
+            isLoading={graphProps.isLoading} 
+            onNodeClick={graphProps.onNodeClick} 
+          />
+        )}
+
+        {!["podcast", "flashcards", "graph", "none"].includes(activeStudio) && (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
             <h3 className="text-sm font-bold uppercase tracking-widest">{activeStudio} Studio</h3>
             <p className="text-xs text-zinc-500 italic">This studio is currently under maintenance.</p>
