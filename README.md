@@ -57,7 +57,7 @@ A professional directory that guides users through the available AI specialized 
 * **Vector Engine:** **Pinecone** (Serverless)
 * **Embeddings:** Hugging Face (`all-MiniLM-L6-v2`)
 * **Voice STT:** **Deepgram** Nova-2 (Sub-300ms latency)
-* **Voice TTS:** **OpenAI** TTS-1 / ElevenLabs
+* **Voice TTS:** ElevenLabs
 * **Spatial UI:** `react-force-graph-3d` & Three.js
 
 ## 🧠 System Architecture
