@@ -8,6 +8,7 @@ import FlashcardsStudio from "./studios/FlashcardsStudio";
 import GraphStudio from "./studios/GraphStudio";
 import DebateStudio from "./studios/DebateStudio";
 import VaultStudio from "./studios/VaultStudio";
+import QuizStudio from "./studios/QuizStudio";
 
 export type StudioType = "podcast" | "flashcards" | "graph" | "debate" | "vault" | "quiz" | "summary" | "none";
 
@@ -21,6 +22,7 @@ interface SidebarRightProps {
   graphProps: any;
   debateProps: any;
   vaultProps: any;
+  quizProps: any; // Added
 }
 
 export default function SidebarRight({
@@ -31,7 +33,8 @@ export default function SidebarRight({
   flashcardProps,
   graphProps,
   debateProps,
-  vaultProps
+  vaultProps,
+  quizProps
 }: SidebarRightProps) {
   const widthClass = !showRightSidebar ? "w-0 border-l-0" : isWide ? "w-[650px]" : "w-[360px]";
 
@@ -50,22 +53,23 @@ export default function SidebarRight({
             </div>
 
             <div className="grid gap-3">
+              <FeatureItem icon={<BrainCircuit className="w-4 h-4" />} title="Adaptive Quiz" desc="Test and track mastery" />
               <FeatureItem icon={<MessageSquare className="w-4 h-4" />} title="Agentic Debate" desc="Multi-persona analysis" />
               <FeatureItem icon={<ShieldCheck className="w-4 h-4" />} title="Verified Vault" desc="Truth audits & bias scores" />
               <FeatureItem icon={<Zap className="w-4 h-4" />} title="Knowledge Graph" desc="3D interaction with concepts" />
-              <FeatureItem icon={<Headphones className="w-4 h-4" />} title="Podcast" desc="Turn text into audio" />
             </div>
             <p className="text-[10px] text-zinc-400 font-medium uppercase tracking-widest text-center pt-4">Type / to launch</p>
           </div>
         )}
 
-        {activeStudio === "podcast" && <PodcastStudio {...podcastProps} handleGenerateScript={podcastProps.onGenerate} togglePlayback={podcastProps.onTogglePlayback} isGeneratingScript={podcastProps.isGenerating} podcastScript={podcastProps.script} />}
-        {activeStudio === "flashcards" && <FlashcardsStudio cards={flashcardProps.cards} isLoading={flashcardProps.isLoading} onGenerate={flashcardProps.onGenerate} onClose={() => {}} onAddCard={() => {}} />}
-        {activeStudio === "graph" && <GraphStudio data={graphProps.data} isLoading={graphProps.isLoading} onNodeClick={graphProps.onNodeClick} />}
-        {activeStudio === "debate" && <DebateStudio transcript={debateProps.transcript} isLoading={debateProps.isLoading} onRestart={debateProps.onRestart} />}
-        {activeStudio === "vault" && <VaultStudio audit={vaultProps.audit} isLoading={vaultProps.isLoading} onAudit={vaultProps.onAudit} />}
+        {activeStudio === "podcast" && <PodcastStudio {...podcastProps} />}
+        {activeStudio === "flashcards" && <FlashcardsStudio {...flashcardProps} />}
+        {activeStudio === "graph" && <GraphStudio {...graphProps} />}
+        {activeStudio === "debate" && <DebateStudio {...debateProps} />}
+        {activeStudio === "vault" && <VaultStudio {...vaultProps} />}
+        {activeStudio === "quiz" && <QuizStudio {...quizProps} />}
 
-        {!["podcast", "flashcards", "graph", "debate", "vault", "none"].includes(activeStudio) && (
+        {!["podcast", "flashcards", "graph", "debate", "vault", "quiz", "none"].includes(activeStudio) && (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
             <h3 className="text-sm font-bold uppercase tracking-widest">{activeStudio} Studio</h3>
             <p className="text-xs text-zinc-500 italic">This studio is currently under maintenance.</p>

@@ -1,9 +1,11 @@
+// FILE: src/components/dashboard/SidebarLeft.tsx
 "use client";
 
-import { FileText, Plus, Trash2, Moon, Sun, Loader2 } from "lucide-react";
+import { FileText, Plus, Trash2, Moon, Sun, Loader2, Activity, BrainCircuit, Zap, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger 
 } from "@/components/ui/dialog";
@@ -21,19 +23,21 @@ interface SidebarLeftProps {
   theme: string | undefined;
   showLeftSidebar: boolean;
   isWide: boolean;
-  toggleSidebar: () => void; // Added this line
+  toggleSidebar: () => void;
 }
 
 export default function SidebarLeft({
   documents, activeDoc, isUploading, isUploadOpen, setIsUploadOpen,
   handleUploadForm, handleSwitchFile, handleDeleteFile, setTheme, theme,
-  showLeftSidebar, isWide, toggleSidebar // Added here
+  showLeftSidebar, isWide, toggleSidebar
 }: SidebarLeftProps) {
   const widthClass = !showLeftSidebar ? "w-0 border-r-0" : isWide ? "w-[450px]" : "w-[280px]";
 
   return (
     <div className={`relative h-full bg-white dark:bg-black border-r border-zinc-200 dark:border-zinc-800 flex flex-col transition-all duration-300 ease-in-out ${widthClass}`}>
       <div className={`flex flex-col h-full overflow-hidden ${!showLeftSidebar ? "opacity-0 invisible" : "opacity-100 visible"}`}>
+        
+        {/* HEADER */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-zinc-100 dark:border-zinc-800/50">
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 rounded bg-zinc-900 dark:bg-white flex items-center justify-center text-white dark:text-black font-bold text-xs">N</div>
@@ -44,6 +48,34 @@ export default function SidebarLeft({
           </Button>
         </div>
         
+        {/* COGNITIVE STATE (PHASE 3) */}
+        <div className="p-4 space-y-4 border-b border-zinc-50 dark:border-zinc-900/50">
+           <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Cognitive State</span>
+              <Badge variant="outline" className="text-[8px] h-4 gap-1 px-1.5 border-emerald-500/20 text-emerald-500 bg-emerald-500/5">
+                <Activity className="w-2.5 h-2.5" /> Bio-Synced
+              </Badge>
+           </div>
+           
+           <div className="grid grid-cols-2 gap-2">
+              <div className="p-2 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 space-y-1">
+                 <div className="flex items-center gap-1.5">
+                    <BrainCircuit className="w-3 h-3 text-purple-500" />
+                    <span className="text-[9px] font-bold text-zinc-500 uppercase">Style</span>
+                 </div>
+                 <p className="text-[10px] font-bold">Kinesthetic</p>
+              </div>
+              <div className="p-2 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 space-y-1">
+                 <div className="flex items-center gap-1.5">
+                    <Zap className="w-3 h-3 text-amber-500" />
+                    <span className="text-[9px] font-bold text-zinc-500 uppercase">Focus</span>
+                 </div>
+                 <p className="text-[10px] font-bold">Deep Work</p>
+              </div>
+           </div>
+        </div>
+
+        {/* UPLOAD ACTION */}
         <div className="p-4">
           <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
             <DialogTrigger asChild>
@@ -64,6 +96,7 @@ export default function SidebarLeft({
           </Dialog>
         </div>
         
+        {/* LIBRARY */}
         <ScrollArea className="flex-1 px-2">
           <div className="space-y-0.5">
             <h3 className="px-2 mb-2 text-[10px] font-medium text-zinc-400 uppercase tracking-wider">Library</h3>
