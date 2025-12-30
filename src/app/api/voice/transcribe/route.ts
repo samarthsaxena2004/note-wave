@@ -4,18 +4,15 @@ import { createClient } from "@deepgram/sdk";
 
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.json();
-    const { audioUrl } = formData;
-
-    const deepgram = createClient(process.env.DEEPGRAM_API_KEY!);
+    const formData = await req.formData();
+    const file = formData.get("file") as Blob;
     
-    // Using Deepgram's Nova-2 model for sub-300ms latency
-    const { result, error } = await deepgram.listen.prerecorded.transcribeUrl(
-      { url: audioUrl },
-      {
-        model: "nova-2",
-        smart_format: true,
-      }
+    const deepgram = createClient(process.env.DEEPGRAM_API_KEY!);
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
+      buffer,
+      { model: "nova-2", smart_format: true }
     );
 
     if (error) throw error;
