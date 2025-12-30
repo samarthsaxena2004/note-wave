@@ -23,12 +23,14 @@ export default function DashboardPage() {
   const { setTheme, theme } = useTheme();
   const [mounted, setMounted] = useState(false);
   
+  // --- CORE STATE ---
   const [documents, setDocuments] = useState<any[]>([]); 
   const [activeDoc, setActiveDoc] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
+  // --- STUDIO STATES ---
   const [activeStudio, setActiveStudio] = useState<StudioType>("none");
   const [podcastScript, setPodcastScript] = useState<any[]>([]);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
@@ -37,15 +39,18 @@ export default function DashboardPage() {
   const [currentLineIndex, setCurrentLineIndex] = useState<number | null>(null);
   const [flashcards, setFlashcards] = useState<any[]>([]);
   const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false);
-
   const [graphData, setGraphData] = useState<any>({ nodes: [], links: [] });
   const [isGeneratingGraph, setIsGeneratingGraph] = useState(false);
-
   const [debateTranscript, setDebateTranscript] = useState<any[]>([]);
   const [isDebating, setIsDebating] = useState(false);
   const [vaultAudit, setVaultAudit] = useState<any>(null);
   const [isAuditing, setIsAuditing] = useState(false);
 
+  // Phase 3 Quiz State
+  const [quizQuestions, setQuizQuestions] = useState<any[]>([]);
+  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
+
+  // --- UI STATE ---
   const [showLeftSidebar, setShowLeftSidebar] = useState(true);
   const [showRightSidebar, setShowRightSidebar] = useState(true);
   const [leftSidebarWide, setLeftSidebarWide] = useState(false);
@@ -82,7 +87,7 @@ export default function DashboardPage() {
 
   // --- STUDIO HANDLERS ---
   async function handleGenerateGraph() {
-    if (!activeDoc) return alert("Please upload/select a document first.");
+    if (!activeDoc) return alert("Select a document first.");
     setIsGeneratingGraph(true);
     try {
       const res = await fetch("/api/graph/extract", {
@@ -92,11 +97,11 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       setGraphData(data);
-    } catch (err) { console.error("Graph API Fail:", err); } finally { setIsGeneratingGraph(false); }
+    } catch (err) { console.error(err); } finally { setIsGeneratingGraph(false); }
   }
 
   async function handleStartDebate() {
-    if (!activeDoc) return alert("Please upload/select a document first.");
+    if (!activeDoc) return alert("Select a document first.");
     setIsDebating(true);
     try {
       const res = await fetch("/api/debate", {
@@ -106,11 +111,11 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       setDebateTranscript(data.transcript || []);
-    } catch (err) { console.error("Debate API Fail:", err); } finally { setIsDebating(false); }
+    } catch (err) { console.error(err); } finally { setIsDebating(false); }
   }
 
   async function handleVaultAudit() {
-    if (!activeDoc) return alert("Please upload/select a document first.");
+    if (!activeDoc) return alert("Select a document first.");
     setIsAuditing(true);
     try {
       const res = await fetch("/api/vault/audit", {
@@ -120,7 +125,21 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       setVaultAudit(data);
-    } catch (err) { console.error("Vault API Fail:", err); } finally { setIsAuditing(false); }
+    } catch (err) { console.error(err); } finally { setIsAuditing(false); }
+  }
+
+  async function handleGenerateQuiz(count: number = 5) {
+    if (!activeDoc) return alert("Select a document first.");
+    setIsGeneratingQuiz(true);
+    try {
+      const res = await fetch("/api/quiz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileId: activeDoc.name, count }),
+      });
+      const data = await res.json();
+      setQuizQuestions(data.questions || []);
+    } catch (err) { console.error(err); } finally { setIsGeneratingQuiz(false); }
   }
 
   async function handleGenerateFlashcards() {
@@ -152,18 +171,15 @@ export default function DashboardPage() {
   }
 
   const executeCommand = (cmd: Command) => {
-    console.log("Executing Command:", cmd.id); // Debug Log
     setFilteredCommands([]);
     setActiveStudio(cmd.id as StudioType);
     setShowRightSidebar(true);
-    
-    // Trigger specific logic
     if (cmd.id === "flashcards") handleGenerateFlashcards();
     else if (cmd.id === "podcast") handleGenerateScript();
     else if (cmd.id === "graph") handleGenerateGraph();
     else if (cmd.id === "debate") handleStartDebate();
     else if (cmd.id === "vault") handleVaultAudit();
-    
+    else if (cmd.id === "quiz") handleGenerateQuiz();
     setInput("");
   };
 
@@ -235,7 +251,7 @@ export default function DashboardPage() {
         }}
         handleSwitchFile={(doc) => { 
           setActiveDoc(doc); setMessages([]); setActiveStudio("none"); 
-          setGraphData({nodes:[], links:[]}); setDebateTranscript([]); setVaultAudit(null);
+          setGraphData({nodes:[], links:[]}); setDebateTranscript([]); setVaultAudit(null); setQuizQuestions([]);
         }}
         handleDeleteFile={(e, id, name) => { e.stopPropagation(); const updated = documents.filter(d => d.id !== id); setDocuments(updated); saveDocsToStorage(updated); }}
         setTheme={setTheme} theme={theme} showLeftSidebar={showLeftSidebar} isWide={leftSidebarWide}
@@ -319,11 +335,12 @@ export default function DashboardPage() {
         showRightSidebar={showRightSidebar} 
         isWide={rightSidebarWide}
         toggleSidebar={() => setShowRightSidebar(!showRightSidebar)}
-        podcastProps={{ script: podcastScript, audioChunks, isGenerating: isGeneratingScript, isPlaying, currentLineIndex, onGenerate: handleGenerateScript, onTogglePlayback: () => setIsPlaying(!isPlaying), viewportRef: scriptViewportRef }}
-        flashcardProps={{ cards: flashcards, isLoading: isGeneratingFlashcards, onGenerate: handleGenerateFlashcards }}
-        graphProps={{ data: graphData, isLoading: isGeneratingGraph, onNodeClick: (node: any) => console.log("Node:", node) }}
-        debateProps={{ transcript: debateTranscript, isLoading: isDebating, onRestart: handleStartDebate }}
-        vaultProps={{ audit: vaultAudit, isLoading: isAuditing, onAudit: handleVaultAudit }}
+        podcastProps={{ script: podcastScript, audioChunks, isGenerating: isGeneratingScript, isPlaying, currentLineIndex, onGenerate: handleGenerateScript, onTogglePlayback: () => setIsPlaying(!isPlaying), viewportRef: scriptViewportRef, onClose: () => setActiveStudio("none") }}
+        flashcardProps={{ cards: flashcards, isLoading: isGeneratingFlashcards, onGenerate: handleGenerateFlashcards, onClose: () => setActiveStudio("none"), onAddCard: (card: any) => setFlashcards([...flashcards, card]) }}
+        graphProps={{ data: graphData, isLoading: isGeneratingGraph, onNodeClick: (node: any) => console.log("Node:", node), onClose: () => setActiveStudio("none") }}
+        debateProps={{ transcript: debateTranscript, isLoading: isDebating, onRestart: handleStartDebate, onClose: () => setActiveStudio("none") }}
+        vaultProps={{ audit: vaultAudit, isLoading: isAuditing, onAudit: handleVaultAudit, onClose: () => setActiveStudio("none") }}
+        quizProps={{ fileId: activeDoc?.name || "Document", questions: quizQuestions, isLoading: isGeneratingQuiz, onGenerate: handleGenerateQuiz, onClose: () => setActiveStudio("none") }}
       />
     </div>
   );

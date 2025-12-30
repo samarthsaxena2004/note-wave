@@ -1,3 +1,4 @@
+// FILE: src/app/api/quiz/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import Groq from "groq-sdk";
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest) {
 
     const queryResponse = await index.query({
       vector: new Array(384).fill(0.01),
-      topK: 20, // Fetch more context for larger quizzes
+      topK: 20, 
       filter: { filename: fileId },
       includeMetadata: true,
     });
@@ -21,7 +22,11 @@ export async function POST(req: NextRequest) {
     const context = queryResponse.matches.map((m) => m.metadata?.text || "").join("\n\n");
 
     const systemPrompt = `
-      You are an expert educator. Based on the provided context, generate exactly ${count} multiple-choice questions.
+      You are an expert educator specializing in Adaptive Learning. 
+      Based on the context, generate exactly ${count} multiple-choice questions.
+      
+      CRITICAL: You must tag each question with a 'concept' (the specific topic being tested) and a 'difficulty' level (1-10).
+      
       Format the output as a JSON object: 
       {
         "questions": [
@@ -30,7 +35,9 @@ export async function POST(req: NextRequest) {
             "question": "Question text?",
             "options": ["Option A", "Option B", "Option C", "Option D"],
             "answer": "Exact text of the correct option",
-            "explanation": "Brief reasoning why this is correct."
+            "explanation": "Brief reasoning.",
+            "concept": "Name of concept",
+            "difficulty": 1-10
           }
         ]
       }
