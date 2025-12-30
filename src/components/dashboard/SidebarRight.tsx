@@ -2,30 +2,36 @@
 "use client";
 
 import React from "react";
-import { Sparkles, Headphones, LayoutList, BrainCircuit, MessageSquare, Zap } from "lucide-react";
+import { Sparkles, Headphones, LayoutList, BrainCircuit, MessageSquare, Zap, ShieldCheck } from "lucide-react";
 import PodcastStudio from "./studios/PodcastStudio";
 import FlashcardsStudio from "./studios/FlashcardsStudio";
 import GraphStudio from "./studios/GraphStudio";
+import DebateStudio from "./studios/DebateStudio";
+import VaultStudio from "./studios/VaultStudio";
 
-export type StudioType = "podcast" | "flashcards" | "graph" | "quiz" | "summary" | "none";
+export type StudioType = "podcast" | "flashcards" | "graph" | "debate" | "vault" | "quiz" | "summary" | "none";
 
 interface SidebarRightProps {
   activeStudio: StudioType;
   showRightSidebar: boolean;
   isWide: boolean;
   toggleSidebar: () => void;
-  podcastProps?: any;
-  flashcardProps?: any;
-  graphProps?: any;
+  podcastProps: any;
+  flashcardProps: any;
+  graphProps: any;
+  debateProps: any;
+  vaultProps: any;
 }
 
 export default function SidebarRight({
   activeStudio,
   showRightSidebar,
   isWide,
-  podcastProps = {},
-  flashcardProps = {},
-  graphProps = {},
+  podcastProps,
+  flashcardProps,
+  graphProps,
+  debateProps,
+  vaultProps
 }: SidebarRightProps) {
   const widthClass = !showRightSidebar ? "w-0 border-l-0" : isWide ? "w-[650px]" : "w-[360px]";
 
@@ -40,45 +46,26 @@ export default function SidebarRight({
                 <Sparkles className="w-5 h-5 text-zinc-900 dark:text-white" />
               </div>
               <h3 className="text-lg font-bold">Studio Hub</h3>
-              <p className="text-xs text-zinc-500 leading-relaxed">Select a specialized AI tool to process your document in new ways.</p>
+              <p className="text-xs text-zinc-500 leading-relaxed">Select a specialized AI tool to process your document.</p>
             </div>
 
             <div className="grid gap-3">
+              <FeatureItem icon={<MessageSquare className="w-4 h-4" />} title="Agentic Debate" desc="Multi-persona analysis" />
+              <FeatureItem icon={<ShieldCheck className="w-4 h-4" />} title="Verified Vault" desc="Truth audits & bias scores" />
               <FeatureItem icon={<Zap className="w-4 h-4" />} title="Knowledge Graph" desc="3D interaction with concepts" />
-              <FeatureItem icon={<Headphones className="w-4 h-4" />} title="Podcast" desc="Turn text into engaging audio" />
-              <FeatureItem icon={<LayoutList className="w-4 h-4" />} title="Flashcards" desc="Extract key study concepts" />
-              <FeatureItem icon={<BrainCircuit className="w-4 h-4" />} title="Quiz" desc="Test your knowledge" />
+              <FeatureItem icon={<Headphones className="w-4 h-4" />} title="Podcast" desc="Turn text into audio" />
             </div>
-            
             <p className="text-[10px] text-zinc-400 font-medium uppercase tracking-widest text-center pt-4">Type / to launch</p>
           </div>
         )}
 
-        {activeStudio === "podcast" && (
-          <PodcastStudio 
-            podcastScript={podcastProps.script || []} 
-            audioChunks={podcastProps.audioChunks || []}
-            {...podcastProps} 
-          />
-        )}
+        {activeStudio === "podcast" && <PodcastStudio {...podcastProps} handleGenerateScript={podcastProps.onGenerate} togglePlayback={podcastProps.onTogglePlayback} isGeneratingScript={podcastProps.isGenerating} podcastScript={podcastProps.script} />}
+        {activeStudio === "flashcards" && <FlashcardsStudio cards={flashcardProps.cards} isLoading={flashcardProps.isLoading} onGenerate={flashcardProps.onGenerate} onClose={() => {}} onAddCard={() => {}} />}
+        {activeStudio === "graph" && <GraphStudio data={graphProps.data} isLoading={graphProps.isLoading} onNodeClick={graphProps.onNodeClick} />}
+        {activeStudio === "debate" && <DebateStudio transcript={debateProps.transcript} isLoading={debateProps.isLoading} onRestart={debateProps.onRestart} />}
+        {activeStudio === "vault" && <VaultStudio audit={vaultProps.audit} isLoading={vaultProps.isLoading} onAudit={vaultProps.onAudit} />}
 
-        {activeStudio === "flashcards" && (
-          <FlashcardsStudio 
-            cards={flashcardProps.cards || []} 
-            {...flashcardProps} 
-            onClose={() => {}} 
-          />
-        )}
-
-        {activeStudio === "graph" && (
-          <GraphStudio 
-            data={graphProps.data} 
-            isLoading={graphProps.isLoading} 
-            onNodeClick={graphProps.onNodeClick} 
-          />
-        )}
-
-        {!["podcast", "flashcards", "graph", "none"].includes(activeStudio) && (
+        {!["podcast", "flashcards", "graph", "debate", "vault", "none"].includes(activeStudio) && (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
             <h3 className="text-sm font-bold uppercase tracking-widest">{activeStudio} Studio</h3>
             <p className="text-xs text-zinc-500 italic">This studio is currently under maintenance.</p>

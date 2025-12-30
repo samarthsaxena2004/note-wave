@@ -38,9 +38,13 @@ export default function DashboardPage() {
   const [flashcards, setFlashcards] = useState<any[]>([]);
   const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false);
 
-  // --- PHASE 1 GRAPH STATE ---
-  const [graphData, setGraphData] = useState<any>(null);
+  const [graphData, setGraphData] = useState<any>({ nodes: [], links: [] });
   const [isGeneratingGraph, setIsGeneratingGraph] = useState(false);
+
+  const [debateTranscript, setDebateTranscript] = useState<any[]>([]);
+  const [isDebating, setIsDebating] = useState(false);
+  const [vaultAudit, setVaultAudit] = useState<any>(null);
+  const [isAuditing, setIsAuditing] = useState(false);
 
   const [showLeftSidebar, setShowLeftSidebar] = useState(true);
   const [showRightSidebar, setShowRightSidebar] = useState(true);
@@ -68,7 +72,7 @@ export default function DashboardPage() {
           setDocuments(parsed);
           if (parsed.length > 0) setActiveDoc(parsed[0]);
         }
-      } catch (e) { console.error(e); }
+      } catch (e) { console.error("Storage Error:", e); }
     }
   }, []);
 
@@ -76,8 +80,9 @@ export default function DashboardPage() {
     localStorage.setItem("notewave_docs", JSON.stringify(newDocs));
   };
 
+  // --- STUDIO HANDLERS ---
   async function handleGenerateGraph() {
-    if (!activeDoc) return;
+    if (!activeDoc) return alert("Please upload/select a document first.");
     setIsGeneratingGraph(true);
     try {
       const res = await fetch("/api/graph/extract", {
@@ -87,7 +92,35 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       setGraphData(data);
-    } catch (err) { console.error(err); } finally { setIsGeneratingGraph(false); }
+    } catch (err) { console.error("Graph API Fail:", err); } finally { setIsGeneratingGraph(false); }
+  }
+
+  async function handleStartDebate() {
+    if (!activeDoc) return alert("Please upload/select a document first.");
+    setIsDebating(true);
+    try {
+      const res = await fetch("/api/debate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileId: activeDoc.name }),
+      });
+      const data = await res.json();
+      setDebateTranscript(data.transcript || []);
+    } catch (err) { console.error("Debate API Fail:", err); } finally { setIsDebating(false); }
+  }
+
+  async function handleVaultAudit() {
+    if (!activeDoc) return alert("Please upload/select a document first.");
+    setIsAuditing(true);
+    try {
+      const res = await fetch("/api/vault/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileId: activeDoc.name }),
+      });
+      const data = await res.json();
+      setVaultAudit(data);
+    } catch (err) { console.error("Vault API Fail:", err); } finally { setIsAuditing(false); }
   }
 
   async function handleGenerateFlashcards() {
@@ -119,12 +152,18 @@ export default function DashboardPage() {
   }
 
   const executeCommand = (cmd: Command) => {
+    console.log("Executing Command:", cmd.id); // Debug Log
     setFilteredCommands([]);
     setActiveStudio(cmd.id as StudioType);
     setShowRightSidebar(true);
+    
+    // Trigger specific logic
     if (cmd.id === "flashcards") handleGenerateFlashcards();
-    if (cmd.id === "podcast") handleGenerateScript();
-    if (cmd.id === "graph") handleGenerateGraph();
+    else if (cmd.id === "podcast") handleGenerateScript();
+    else if (cmd.id === "graph") handleGenerateGraph();
+    else if (cmd.id === "debate") handleStartDebate();
+    else if (cmd.id === "vault") handleVaultAudit();
+    
     setInput("");
   };
 
@@ -194,7 +233,10 @@ export default function DashboardPage() {
           setDocuments(updated); saveDocsToStorage(updated); setActiveDoc(updated[updated.length-1]);
           setIsUploading(false); setIsUploadOpen(false);
         }}
-        handleSwitchFile={(doc) => { setActiveDoc(doc); setMessages([]); setActiveStudio("none"); setGraphData(null); }}
+        handleSwitchFile={(doc) => { 
+          setActiveDoc(doc); setMessages([]); setActiveStudio("none"); 
+          setGraphData({nodes:[], links:[]}); setDebateTranscript([]); setVaultAudit(null);
+        }}
         handleDeleteFile={(e, id, name) => { e.stopPropagation(); const updated = documents.filter(d => d.id !== id); setDocuments(updated); saveDocsToStorage(updated); }}
         setTheme={setTheme} theme={theme} showLeftSidebar={showLeftSidebar} isWide={leftSidebarWide}
         toggleSidebar={() => setShowLeftSidebar(!showLeftSidebar)}
@@ -213,13 +255,11 @@ export default function DashboardPage() {
             )}
             {!showLeftSidebar && <span className="font-bold text-sm tracking-tight text-zinc-900 dark:text-white">NoteWave</span>}
           </div>
-
           <div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
             <span className="text-[10px] font-bold uppercase text-zinc-400">Context</span>
             <div className="h-3 w-px bg-zinc-200 dark:bg-zinc-700" />
             <span className="text-xs font-semibold truncate max-w-[150px] text-zinc-900 dark:text-zinc-100">{activeDoc?.name || "Ready"}</span>
           </div>
-
           <div className="flex items-center gap-2">
             {showRightSidebar && (
               <Button variant="ghost" size="icon" onClick={() => setRightSidebarWide(!rightSidebarWide)} className="h-8 w-8 text-zinc-400">
@@ -281,7 +321,9 @@ export default function DashboardPage() {
         toggleSidebar={() => setShowRightSidebar(!showRightSidebar)}
         podcastProps={{ script: podcastScript, audioChunks, isGenerating: isGeneratingScript, isPlaying, currentLineIndex, onGenerate: handleGenerateScript, onTogglePlayback: () => setIsPlaying(!isPlaying), viewportRef: scriptViewportRef }}
         flashcardProps={{ cards: flashcards, isLoading: isGeneratingFlashcards, onGenerate: handleGenerateFlashcards }}
-        graphProps={{ data: graphData, isLoading: isGeneratingGraph, onNodeClick: (node: any) => console.log("Synthesizing node:", node) }}
+        graphProps={{ data: graphData, isLoading: isGeneratingGraph, onNodeClick: (node: any) => console.log("Node:", node) }}
+        debateProps={{ transcript: debateTranscript, isLoading: isDebating, onRestart: handleStartDebate }}
+        vaultProps={{ audit: vaultAudit, isLoading: isAuditing, onAudit: handleVaultAudit }}
       />
     </div>
   );
