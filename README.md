@@ -6,9 +6,9 @@ Built with **Next.js 16 (Turbopack)**, NoteWave utilizes high-integrity LLM orch
 
 ## ⚠️ Important Notice
 
-**It is strongly recommended to run this application locally.**
+> **It is strongly recommended to run this application locally.**
 
-The publicly deployed version is intended as a portfolio demo. Because it relies on free-tier API keys (Groq & ElevenLabs), it may be **rate-limited**, become unavailable, or run out of credits without notice. Running it locally gives you full control and guarantees data privacy.
+> The publicly deployed version is intended as a portfolio demo. Because it relies on free-tier API keys (Groq & ElevenLabs), it may be **rate-limited**, become unavailable, or run out of credits without notice. Running it locally gives you full control and guarantees data privacy.
 
 ---
 
