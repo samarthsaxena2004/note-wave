@@ -6,14 +6,14 @@
 
 [Try Demo Now!](https://notewave.samarthsaxena.dev/)
 
-</div>
+
 
 **NoteWave** is an AI-powered "Second Brain" and immersive research ecosystem. It transforms static PDF documents into dynamic knowledge graphs, interactive research studios, and voice-enabled learning environments.
 
 Built with **Next.js 16 (Turbopack)**, NoteWave utilizes high-integrity LLM orchestration, vector search, and real-time audio processing to redefine how we interact with documents.
 
-<div align="center">
   <img src="public/notewave.png" alt="NoteWave Landing Page" width="800" />
+  
 </div>
 
 ## ⚠️ Important Notice
