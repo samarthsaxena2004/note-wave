@@ -139,6 +139,8 @@ Clean directory guiding users to specialized AI tools.
     DEEPGRAM_API_KEY=your_key
     OPENAI_API_KEY=your_key
     ELEVENLABS_API_KEY=your_key
+    NEXT_PUBLIC_SUPABASE_URL=your_project_url
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
     ```
 
 3.  **Install Radix Primitives (If missing):**
