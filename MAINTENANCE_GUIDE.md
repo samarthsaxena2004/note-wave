@@ -36,12 +36,12 @@ Follow this flowchart if a core feature fails.
     * `src/app/api/speak/route.ts`
 4.  **Voice ID Check:** Verify the specific voice IDs used (e.g., Adam/Rachel) are still active in the ElevenLabs Voice Library and replace if necessary.
 
-### Issue C: Ingestion Fails (Error 400 or 500 during Upload)
+### Issue C: Ingestion or Retrieval Fails (Error 400 or 500)
 
-**Failure Condition:** The file uploads, but the system crashes during the "Generating Embeddings" step due to model retirement.
+**Failure Condition:** The file uploads, but the system crashes during the "Generating Embeddings" step, or API routes fail to retrieve correct context because the dynamic embedding fallback triggers exclusively.
 
 1.  **Check Model ID:** Verify the embedding model ID in `src/lib/rag.ts` (`sentence-transformers/all-MiniLM-L6-v2`) is still active on Hugging Face.
-2.  **Find Replacement:** Identify a new, compatible embedding model.
+2.  **Verify Fallback:** If Hugging Face is down or rate-limited, all queries dynamically fall back to a dummy vector (`Array(384).fill(0.01)`) to keep the app online. Check server logs for `⚠️ Embeddings failed` to confirm if the fallback is what's limiting search accuracy.
 3.  **Critical Step: Re-indexing:** If you change the embedding model, you **must** re-index all data.
     * **Clear Pinecone:** Delete the existing index (`note-wave`) in the Pinecone Console.
     * **Create New Index:** Create a new index with the **same dimensions (384)**.
