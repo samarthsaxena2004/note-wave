@@ -21,17 +21,29 @@ export async function getEmbeddings(text: string) {
       // Clean text to avoid issues
       const cleanText = text.replace(/\n/g, " ").trim();
       
-      if (!cleanText) return [];
+      if (!cleanText) {
+        throw new Error("Text is empty after cleaning. Cannot generate embeddings.");
+      }
 
       const response = await hf.featureExtraction({
         model: "sentence-transformers/all-MiniLM-L6-v2",
         inputs: cleanText,
       });
       
-      return response as number[];
+      let vector = response as unknown;
+      if (Array.isArray(vector) && Array.isArray(vector[0])) {
+        vector = vector[0]; // Flatten nested array if HuggingFace returns 2D array
+      }
 
-    } catch (error: any) {
-      console.warn(`⚠️ Embedding attempt ${attempt} failed:`, error.message);
+      if (!Array.isArray(vector) || vector.length === 0) {
+        throw new Error("Invalid response format from HuggingFace.");
+      }
+
+      return vector as number[];
+
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.warn(`⚠️ Embedding attempt ${attempt} failed:`, errMsg);
       
       // If it's a Rate Limit (429) or Service Unavailable (503), wait and retry
       if (attempt < maxRetries) {
@@ -45,7 +57,7 @@ export async function getEmbeddings(text: string) {
       }
     }
   }
-  return [];
+  throw new Error("Failed to generate embeddings after retries.");
 }
 
 /**
@@ -56,7 +68,7 @@ export function chunkText(text: string, chunkSize = 1000, overlap = 200): string
   let startIndex = 0;
 
   while (startIndex < text.length) {
-    let endIndex = startIndex + chunkSize;
+    const endIndex = startIndex + chunkSize;
 
     if (endIndex >= text.length) {
       chunks.push(text.slice(startIndex));
