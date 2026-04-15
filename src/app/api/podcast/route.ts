@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { generatePodcastScript } from "@/lib/podcast-script";
+import { getEmbeddings } from "@/lib/rag";
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,9 +23,17 @@ export async function POST(req: NextRequest) {
     const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
     const index = pinecone.index(process.env.PINECONE_INDEX_NAME);
 
+    let queryVector: number[];
+    try {
+      queryVector = await getEmbeddings("main narrative, interesting stories, core ideas, podcast script");
+    } catch (err) {
+      console.error("⚠️ Embeddings failed, falling back to dummy vector:", err);
+      queryVector = new Array(384).fill(0.01); 
+    }
+
     // Fetch top chunks for the file to build the script
     const queryResponse = await index.query({
-      vector: new Array(384).fill(0.01), 
+      vector: queryVector.length > 0 ? queryVector : new Array(384).fill(0.01), 
       topK: 15, 
       filter: { filename: fileId }, 
       includeMetadata: true,

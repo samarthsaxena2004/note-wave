@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import Groq from "groq-sdk";
 import { Pinecone } from "@pinecone-database/pinecone";
+import { getEmbeddings } from "@/lib/rag";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -8,12 +9,25 @@ export async function POST(req: NextRequest) {
   try {
     const { messages, fileId } = await req.json();
 
+    // Generate real embeddings from user's message
+    const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user");
+    const queryText = lastUserMsg?.content || "core document context";
+
+    let queryVector: number[];
+    try {
+      queryVector = await getEmbeddings(queryText);
+    } catch (err) {
+      console.error("⚠️ Embeddings failed, falling back to dummy vector:", err);
+      // Fallback if HF is down or rate-limited
+      queryVector = new Array(384).fill(0.01); 
+    }
+
     const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
     const index = pinecone.index(process.env.PINECONE_INDEX_NAME!);
 
     // Fetch context from Pinecone
     const queryResponse = await index.query({
-      vector: new Array(384).fill(0.01),
+      vector: queryVector.length > 0 ? queryVector : new Array(384).fill(0.01),
       topK: 5,
       filter: { filename: fileId },
       includeMetadata: true,

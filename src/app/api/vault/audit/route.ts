@@ -2,17 +2,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import Groq from "groq-sdk";
+import { getEmbeddings } from "@/lib/rag";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req: NextRequest) {
   try {
     const { fileId } = await req.json();
+    let queryVector: number[];
+    try {
+      queryVector = await getEmbeddings("security risks, financial data, sensitive information, compliance, claims");
+    } catch (err) {
+      console.error("⚠️ Embeddings failed, falling back to dummy vector:", err);
+      queryVector = new Array(384).fill(0.01); 
+    }
+
     const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
     const index = pinecone.index(process.env.PINECONE_INDEX_NAME!);
 
     const queryResponse = await index.query({
-      vector: new Array(384).fill(0.01),
+      vector: queryVector.length > 0 ? queryVector : new Array(384).fill(0.01),
       topK: 15,
       filter: { filename: fileId },
       includeMetadata: true,
