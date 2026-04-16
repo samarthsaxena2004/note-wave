@@ -165,9 +165,23 @@ Clean directory guiding users to specialized AI tools.
 
 ---
 
-## Contributing
+## 🐳 Self-Hosting with Docker & Ollama
 
-Contributions are welcome! If you have ideas for features (e.g., persistent database storage, user authentication), feel free to fork the repo and submit a PR.
+NoteWave natively supports full privacy execution natively over Ollama. If you enable `USE_LOCAL_LLM=true` in `.env.local` and spawn the Docker container, all prompts securely route to your local hardware.
+
+```bash
+# Boot Postgres (if added), Node env, and Ollama together
+docker-compose up --build -d
+
+# Inside the ollama container, pull your required model (e.g., Llama 3.2):
+docker exec -it notewave-ollama-1 ollama run llama3.2
+```
+
+## Contributing
+We welcome contributions! Please open an issue first to discuss the changes you want to make.
+
+## License
+MIT License.
 
 1.  Fork the Project
 2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)

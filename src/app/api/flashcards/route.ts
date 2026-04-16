@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
-import Groq from "groq-sdk";
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+import { generateJSONResponse } from "@/lib/llm";
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,16 +31,8 @@ export async function POST(req: NextRequest) {
       Keep questions concise and answers informative.
     `;
 
-    const completion = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: contextText.slice(0, 8000) }
-      ],
-      model: "llama-3.3-70b-versatile",
-      response_format: { type: "json_object" },
-    });
-
-    const data = JSON.parse(completion.choices[0].message.content || '{"flashcards": []}');
+    const content = await generateJSONResponse(systemPrompt, contextText.slice(0, 8000), process.env.GROQ_API_KEY!);
+    const data = JSON.parse(content || '{"flashcards": []}');
     return NextResponse.json(data);
   } catch (error: any) {
     console.error("Flashcard API Error:", error);
