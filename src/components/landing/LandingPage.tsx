@@ -14,12 +14,13 @@ export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
   async function processUpload(file: File) {
     if (!session) {
-      alert("Please sign in to upload documents.");
+      setShowAuthModal(true);
       return;
     }
     const formData = new FormData();
@@ -74,10 +75,6 @@ export default function LandingPage() {
 
           {isLoading ? (
             <div className="p-10"><Loader2 className="w-8 h-8 animate-spin mx-auto text-zinc-400" /></div>
-          ) : !session ? (
-            <div className="mt-8 w-full max-w-sm mx-auto flex justify-center text-left">
-              <AuthModal />
-            </div>
           ) : (
             <div 
               onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
@@ -115,6 +112,20 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+      
+      {showAuthModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-sm animate-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setShowAuthModal(false)}
+              className="absolute -top-12 right-0 text-white/70 hover:text-white font-medium text-sm transition-colors"
+            >
+              Close
+            </button>
+            <AuthModal />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
