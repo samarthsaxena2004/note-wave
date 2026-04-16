@@ -88,7 +88,12 @@ export default function LandingPage() {
                   <p className="font-medium">{isUploading ? "Processing PDF..." : "Drag and drop your PDF here"}</p>
                   <p className="text-sm text-zinc-400">or click to browse</p>
                 </div>
-                <input type="file" accept=".pdf" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={(e) => { if (e.target.files?.length) processUpload(e.target.files[0]); }} disabled={isUploading} />
+                <input type="file" accept=".pdf" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={(e) => { 
+                  if (e.target.files?.length) {
+                    processUpload(e.target.files[0]);
+                    e.target.value = '';
+                  }
+                }} disabled={isUploading} />
               </div>
             </div>
           )}
