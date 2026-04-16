@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { generatePodcastScript } from "@/lib/podcast-script";
+import { getEmbeddings } from "@/lib/rag";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { fileId } = body;
+    const { fileId, userId } = body;
 
-    if (!fileId) {
-      return NextResponse.json({ error: "No fileId (filename) provided" }, { status: 400 });
-    }
+    if (!fileId || !userId) return NextResponse.json({ error: "fileId and userId required" }, { status: 400 });
 
     console.log(`🎙️ API: Fetching context for podcast: ${fileId}`);
 
@@ -19,12 +18,20 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Fetch Context from Pinecone
-    const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
-    const index = pinecone.index(process.env.PINECONE_INDEX_NAME);
+    let queryVector;
+    try {
+      queryVector = await getEmbeddings("main topics, overview, comprehensive summary, highlights, introduction, conclusion");
+    } catch (e) {
+      console.warn("⚠️ Embeddings failed, falling back to dummy vector for podcast context");
+      queryVector = new Array(384).fill(0.01);
+    }
+
+    const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
+    const index = pinecone.index(process.env.PINECONE_INDEX_NAME!).namespace(userId);
 
     // Fetch top chunks for the file to build the script
     const queryResponse = await index.query({
-      vector: new Array(384).fill(0.01), 
+      vector: queryVector, 
       topK: 15, 
       filter: { filename: fileId }, 
       includeMetadata: true,

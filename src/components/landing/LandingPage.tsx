@@ -24,6 +24,7 @@ export default function LandingPage() {
     }
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("userId", session.user.id);
     setIsUploading(true);
     try {
       const res = await fetch("/api/ingest", { method: "POST", body: formData });

@@ -9,19 +9,20 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData();
     const file = formData.get("file") as File;
+    const userId = formData.get("userId") as string;
 
-    if (!file) {
-      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+    if (!file || !userId) {
+      return NextResponse.json({ error: "File or User ID missing" }, { status: 400 });
     }
 
     // Check size limit (block files > 4.5MB)
     if (file.size > 4.5 * 1024 * 1024) {
-       return NextResponse.json({ error: "File too large. Please upload a PDF smaller than 4MB." }, { status: 413 });
+       return NextResponse.json({ error: "File too large. Please upload < 4MB." }, { status: 413 });
     }
 
-    console.log(`📄 Processing file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+    console.log(`📄 Processing file: ${file.name} for user ${userId}`);
 
-    // 1. Convert file to Uint8Array
+    // 1. Convert file
     const arrayBuffer = await file.arrayBuffer();
     const fileData = new Uint8Array(arrayBuffer);
     
@@ -29,58 +30,38 @@ export async function POST(req: NextRequest) {
     const pdfData = await extractText(fileData) as any;
     const rawText = pdfData.text || ""; 
     const text = typeof rawText === 'string' ? rawText : JSON.stringify(rawText);
-    const totalPages = pdfData.totalPages || 0;
 
     if (text.trim().length === 0) {
-        throw new Error("Could not extract text. The PDF might be an image scan or encrypted.");
+        throw new Error("Could not extract text.");
     }
 
-    console.log(`📝 Extracted text from ${totalPages} pages`);
-
-    // 3. Chunk the text
+    // 3. Chunk
     const chunks = chunkText(text, 1000, 200);
-    console.log(`🧩 Created ${chunks.length} chunks`);
 
     // 4. Prepare Pinecone
     const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
-    const index = pinecone.index(process.env.PINECONE_INDEX_NAME!);
+    const index = pinecone.index(process.env.PINECONE_INDEX_NAME!).namespace(userId);
 
-    // 5. Generate Embeddings & Upload (BATCHED to avoid Rate Limits)
-    console.log("🤖 Generating embeddings in batches...");
-    
+    // 5. Generate Embeddings & Upload
     const vectors = [];
-    const BATCH_SIZE = 5; // Process 5 chunks at a time
+    const BATCH_SIZE = 5;
 
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
       const batch = chunks.slice(i, i + BATCH_SIZE);
-      
-      console.log(`Processing batch ${i / BATCH_SIZE + 1} of ${Math.ceil(chunks.length / BATCH_SIZE)}...`);
-
       const batchPromises = batch.map(async (chunk, batchIndex) => {
         const embedding = await getEmbeddings(chunk);
         return {
           id: `${file.name}-${i + batchIndex}-${Date.now()}`, 
           values: embedding,
-          metadata: {
-            text: chunk,
-            filename: file.name
-          },
+          metadata: { text: chunk, filename: file.name, userId },
         };
       });
 
-      // Wait for this small batch to finish before starting the next one
       const batchVectors = await Promise.all(batchPromises);
       vectors.push(...batchVectors);
-      
-      // Optional: Add a tiny pause to be extra polite to the API
       await new Promise(resolve => setTimeout(resolve, 200)); 
     }
 
-    console.log(`🚀 Uploading ${vectors.length} vectors to Pinecone...`);
-    
-    // Pinecone also prefers batched uploads (max 100 at a time usually)
-    // We can upload all at once if < 100, or batch upload if needed.
-    // For safety, let's batch upload to Pinecone too if it's huge.
     const PINECONE_BATCH = 50;
     for (let i = 0; i < vectors.length; i += PINECONE_BATCH) {
         const batch = vectors.slice(i, i + PINECONE_BATCH);
