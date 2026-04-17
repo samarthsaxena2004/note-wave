@@ -9,18 +9,14 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData();
     const file = formData.get("file") as File;
-    const userId = formData.get("userId") as string;
-
-    if (!file || !userId) {
-      return NextResponse.json({ error: "File or User ID missing" }, { status: 400 });
-    }
+    if (!file) { return NextResponse.json({ error: "File missing" }, { status: 400 }); }
 
     // Check size limit (block files > 4.5MB)
     if (file.size > 4.5 * 1024 * 1024) {
        return NextResponse.json({ error: "File too large. Please upload < 4MB." }, { status: 413 });
     }
 
-    console.log(`📄 Processing file: ${file.name} for user ${userId}`);
+    console.log(`📄 Processing file: ${file.name}`);
 
     // 1. Convert file
     const arrayBuffer = await file.arrayBuffer();
@@ -40,7 +36,7 @@ export async function POST(req: NextRequest) {
 
     // 4. Prepare Pinecone
     const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
-    const index = pinecone.index(process.env.PINECONE_INDEX_NAME!).namespace(userId);
+    const index = pinecone.index(process.env.PINECONE_INDEX_NAME!);
 
     // 5. Generate Embeddings & Upload
     const vectors = [];
@@ -53,7 +49,7 @@ export async function POST(req: NextRequest) {
         return {
           id: `${file.name}-${i + batchIndex}-${Date.now()}`, 
           values: embedding,
-          metadata: { text: chunk, filename: file.name, userId },
+          metadata: { text: chunk, filename: file.name },
         };
       });
 

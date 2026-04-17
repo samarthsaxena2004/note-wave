@@ -8,11 +8,9 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { messages, fileId, userId } = body;
+    const { messages, fileId } = body;
 
-    if (!messages || !fileId || !userId) {
-      return NextResponse.json({ error: "Messages, fileId, and userId are required" }, { status: 400 });
-    }
+    if (!messages || !fileId) { return NextResponse.json({ error: "Messages and fileId are required" }, { status: 400 }); }
 
     const lastMessage = messages[messages.length - 1];
 
@@ -27,7 +25,7 @@ export async function POST(req: NextRequest) {
 
     // 2. Query Pinecone for context
     const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
-    const index = pinecone.index(process.env.PINECONE_INDEX_NAME!).namespace(userId);
+    const index = pinecone.index(process.env.PINECONE_INDEX_NAME!);
 
     // Fetch context from Pinecone
     const queryResponse = await index.query({

@@ -5,12 +5,8 @@ import { useTheme } from "next-themes";
 import { Sun, Moon, UploadCloud, Loader2, Github, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-import { useAuth } from "@/lib/supabase/AuthProvider";
-import { AuthModal } from "@/components/auth/AuthModal";
-
-export default function LandingPage() {
+export default function LandingPage({ onEnter }: { onEnter: () => void }) {
   const { setTheme, theme } = useTheme();
-  const { session, isLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -19,13 +15,8 @@ export default function LandingPage() {
   useEffect(() => { setMounted(true); }, []);
 
   async function processUpload(file: File) {
-    if (!session) {
-      setShowAuthModal(true);
-      return;
-    }
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("userId", session.user.id);
     setIsUploading(true);
     try {
       const res = await fetch("/api/ingest", { method: "POST", body: formData });
@@ -34,7 +25,7 @@ export default function LandingPage() {
       const newDoc = { id: Date.now(), name: data.filename, date: "Just now" };
       const savedDocs = JSON.parse(localStorage.getItem("notewave_docs") || "[]");
       localStorage.setItem("notewave_docs", JSON.stringify([...savedDocs, newDoc]));
-      window.location.reload(); // Refresh to trigger the RootPage router
+      onEnter();
     } catch (err: any) {
       alert("Error: " + err.message);
     } finally {
@@ -73,7 +64,7 @@ export default function LandingPage() {
             <p className="text-lg text-zinc-500 dark:text-zinc-400 max-w-lg mx-auto leading-relaxed">Upload a PDF to generate podcasts, summaries, and ask questions using advanced AI.</p>
           </div>
 
-          {isLoading ? (
+          {isUploading ? (
             <div className="p-10"><Loader2 className="w-8 h-8 animate-spin mx-auto text-zinc-400" /></div>
           ) : (
             <div 
@@ -118,19 +109,6 @@ export default function LandingPage() {
         </div>
       </footer>
       
-      {showAuthModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-sm animate-in zoom-in-95 duration-200">
-            <button 
-              onClick={() => setShowAuthModal(false)}
-              className="absolute -top-12 right-0 text-white/70 hover:text-white font-medium text-sm transition-colors"
-            >
-              Close
-            </button>
-            <AuthModal />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

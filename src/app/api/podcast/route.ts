@@ -6,9 +6,9 @@ import { getEmbeddings } from "@/lib/rag";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { fileId, userId } = body;
+    const { fileId } = body;
 
-    if (!fileId || !userId) return NextResponse.json({ error: "fileId and userId required" }, { status: 400 });
+    if (!fileId) return NextResponse.json({ error: "fileId required" }, { status: 400 });
 
     console.log(`🎙️ API: Fetching context for podcast: ${fileId}`);
 
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     }
 
     const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
-    const index = pinecone.index(process.env.PINECONE_INDEX_NAME!).namespace(userId);
+    const index = pinecone.index(process.env.PINECONE_INDEX_NAME!);
 
     // Fetch top chunks for the file to build the script
     const queryResponse = await index.query({

@@ -8,9 +8,9 @@ import { generateJSONResponse } from "@/lib/llm";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { fileId, userId } = body;
+    const { fileId } = body;
 
-    if (!fileId || !userId) return NextResponse.json({ error: "fileId and userId required" }, { status: 400 });
+    if (!fileId) return NextResponse.json({ error: "fileId required" }, { status: 400 });
 
     let queryVector;
     try {
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     }
 
     const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
-    const index = pinecone.index(process.env.PINECONE_INDEX_NAME!).namespace(userId);
+    const index = pinecone.index(process.env.PINECONE_INDEX_NAME!);
 
     const queryResponse = await index.query({
       vector: queryVector,
