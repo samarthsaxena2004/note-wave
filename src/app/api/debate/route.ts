@@ -1,11 +1,9 @@
 // FILE: src/app/api/debate/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
-import Groq from "groq-sdk";
 import { RESEARCH_AGENTS } from "@/lib/agents";
 import { getEmbeddings } from "@/lib/rag";
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+import { generateJSONResponse } from "@/lib/llm";
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,16 +42,8 @@ export async function POST(req: NextRequest) {
       Format: {"transcript": [{"agent": "Critic", "text": "..."}, ...]}
     `;
 
-    const completion = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: context.slice(0, 10000) }
-      ],
-      model: "llama-3.3-70b-versatile",
-      response_format: { type: "json_object" },
-    });
-
-    return NextResponse.json(JSON.parse(completion.choices[0].message.content || '{"transcript":[]}'));
+    const content = await generateJSONResponse(systemPrompt, context.slice(0, 10000), process.env.GROQ_API_KEY!);
+    return NextResponse.json(JSON.parse(content || '{"transcript":[]}'));
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

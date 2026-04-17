@@ -59,26 +59,75 @@ export async function POST(req: NextRequest) {
       ${context || "No specific document context available yet."}`
     };
 
-    const response = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      stream: true,
-      messages: [systemPrompt, ...messages],
-      temperature: 0.1, // Near-zero temperature minimizes stuttering and ensures consistency
-      max_tokens: 1500,
-    });
+    const useLocalLlm = process.env.USE_LOCAL_LLM === "true";
+    let stream: ReadableStream;
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        const encoder = new TextEncoder();
-        for await (const chunk of response) {
-          const content = chunk.choices[0]?.delta?.content || "";
-          if (content) {
-            controller.enqueue(encoder.encode(content));
+    if (useLocalLlm) {
+      console.log("🤖 Routing request to local Ollama instance...");
+      const ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
+      
+      const ollamaRes = await fetch(`${ollamaUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "llama3.2", // Default lightweight model assumption
+          messages: [systemPrompt, ...messages],
+          stream: true,
+        }),
+      });
+
+      if (!ollamaRes.ok) throw new Error("Ollama connection failed");
+
+      stream = new ReadableStream({
+        async start(controller) {
+          const reader = ollamaRes.body?.getReader();
+          const decoder = new TextDecoder();
+          const encoder = new TextEncoder();
+          if (!reader) return controller.close();
+
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            
+            const chunkText = decoder.decode(value);
+            const lines = chunkText.split('\n').filter(Boolean);
+            
+            for (const line of lines) {
+              try {
+                const json = JSON.parse(line);
+                if (json.message?.content) {
+                  controller.enqueue(encoder.encode(json.message.content));
+                }
+              } catch (e) {
+                // Ignore incomplete JSON parsing errors securely
+              }
+            }
           }
+          controller.close();
         }
-        controller.close();
-      },
-    });
+      });
+    } else {
+      const response = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        stream: true,
+        messages: [systemPrompt, ...messages],
+        temperature: 0.1, 
+        max_tokens: 1500,
+      });
+
+      stream = new ReadableStream({
+        async start(controller) {
+          const encoder = new TextEncoder();
+          for await (const chunk of response) {
+            const content = chunk.choices[0]?.delta?.content || "";
+            if (content) {
+              controller.enqueue(encoder.encode(content));
+            }
+          }
+          controller.close();
+        },
+      });
+    }
 
     return new Response(stream);
   } catch (error) {

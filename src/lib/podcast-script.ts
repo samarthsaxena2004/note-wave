@@ -21,18 +21,43 @@ export async function generatePodcastScript(text: string) {
   `;
 
   try {
-    const completion = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: `Adapt this source text into a script:\n\n${text.slice(0, 8000)}` }
-      ],
-      // Using a highly stable Llama 3.3 model ID
-      model: "llama-3.3-70b-versatile",
-      response_format: { type: "json_object" },
-      temperature: 0.7,
-    });
+    let rawContent = "{}";
+    const useLocalLlm = process.env.USE_LOCAL_LLM === "true";
 
-    const rawContent = completion.choices[0].message.content || "{}";
+    if (useLocalLlm) {
+      console.log("🤖 Routing podcast script to local Ollama instance...");
+      const ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
+      const ollamaRes = await fetch(`${ollamaUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "llama3.2",
+          format: "json", // Important to force JSON format in Ollama if tested natively
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Adapt this source text into a script:\n\n${text.slice(0, 8000)}` }
+          ],
+          stream: false,
+        }),
+      });
+
+      if (!ollamaRes.ok) throw new Error("Ollama connection failed");
+      const ollamaData = await ollamaRes.json();
+      rawContent = ollamaData.message?.content || "{}";
+    } else {
+      const completion = await groq.chat.completions.create({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Adapt this source text into a script:\n\n${text.slice(0, 8000)}` }
+        ],
+        // Using a highly stable Llama 3.3 model ID
+        model: "llama-3.3-70b-versatile",
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      });
+
+      rawContent = completion.choices[0].message.content || "{}";
+    }
     
     // Defensive parsing: Strip potential markdown code blocks if the LLM ignores the format rule
     const jsonString = rawContent.replace(/```json|```/g, "").trim();

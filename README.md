@@ -167,9 +167,21 @@ Clean directory guiding users to specialized AI tools.
 
 ---
 
-## Contributing
+## 🦙 Self-Hosting with Native Ollama
 
-Contributions are welcome! If you have ideas for features (e.g., persistent database storage, user authentication), feel free to fork the repo and submit a PR.
+NoteWave natively supports full privacy execution over a local Ollama instance without requiring complex Docker virtualization. Deploying NoteWave seamlessly to Vercel/Netlify remains unaffected.
+
+1. Download [Ollama](https://ollama.com/) for Mac/Windows/Linux and let it run natively.
+2. In your terminal, pull your preferred model: `ollama run llama3.2`
+3. In NoteWave's `.env.local`, set `USE_LOCAL_LLM=true`
+
+All prompts will now securely and automatically route to your local `http://localhost:11434` engine!
+
+## Contributing
+We welcome contributions! Please open an issue first to discuss the changes you want to make.
+
+## License
+MIT License.
 
 1.  Fork the Project
 2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)

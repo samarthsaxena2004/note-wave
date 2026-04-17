@@ -1,7 +1,5 @@
 // FILE: src/lib/graph.ts
-import Groq from "groq-sdk";
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+import { generateJSONResponse } from "./llm";
 
 export interface GraphNode {
   id: string;
@@ -40,17 +38,8 @@ export async function extractGraphData(context: string): Promise<GraphData> {
   `;
 
   try {
-    const completion = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: context.slice(0, 8000) }
-      ],
-      model: "llama-3.3-70b-versatile",
-      response_format: { type: "json_object" },
-    });
-
-    const content = completion.choices[0].message.content || '{"nodes":[], "links":[]}';
-    return JSON.parse(content);
+    const content = await generateJSONResponse(systemPrompt, context.slice(0, 8000), process.env.GROQ_API_KEY!);
+    return JSON.parse(content || '{"nodes":[], "links":[]}');
   } catch (error) {
     console.error("Graph AI Error:", error);
     return { nodes: [], links: [] };
