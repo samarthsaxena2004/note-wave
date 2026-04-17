@@ -5,43 +5,36 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useTheme } from "next-themes";
 import { 
-  FileText, Plus, Trash2, Moon, Sun, 
-  Play, Pause, RefreshCw, ArrowUp, Loader2, 
-  Bot, User, Mic, Headphones, StopCircle 
+  FileText, ArrowUp, Loader2, Bot, User, Mic, StopCircle 
 } from "lucide-react";
 
-// UI Components
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger 
-} from "@/components/ui/dialog";
+
+// Modular Components
+import SidebarLeft from "./SidebarLeft";
+import SidebarRight from "./SidebarRight";
 
 export default function DashboardPage() {
   const { setTheme, theme } = useTheme();
-  
-  // Hydration fix
   const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
   
-  // Data State
+  // --- DATA STATE ---
   const [documents, setDocuments] = useState<any[]>([]); 
   const [activeDoc, setActiveDoc] = useState<any>(null);
   
-  // Chat State
+  // --- CHAT STATE ---
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  // Voice Input State
+  // --- VOICE STATE ---
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
   
-  // Podcast State
+  // --- PODCAST STATE ---
   const [podcastScript, setPodcastScript] = useState<any[]>([]);
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -50,16 +43,15 @@ export default function DashboardPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const stopSignalRef = useRef(false);
 
-  // Upload State
+  // --- UI STATE ---
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-
-  // Mobile State
   const [showLeftSidebar, setShowLeftSidebar] = useState(false);
   const [showRightSidebar, setShowRightSidebar] = useState(false);
 
-  // --- PERSISTENCE ---
+  // --- INITIALIZATION & PERSISTENCE ---
   useEffect(() => {
+    setMounted(true);
     const savedDocs = localStorage.getItem("notewave_docs");
     if (savedDocs) {
       try {
@@ -83,18 +75,13 @@ export default function DashboardPage() {
       setIsListening(false);
       return;
     }
-
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Your browser does not support voice input. Try Chrome or Edge.");
+      alert("Browser does not support voice input.");
       return;
     }
-
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
     recognition.onstart = () => setIsListening(true);
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
@@ -102,7 +89,6 @@ export default function DashboardPage() {
     };
     recognition.onerror = () => setIsListening(false);
     recognition.onend = () => setIsListening(false);
-
     recognitionRef.current = recognition;
     recognition.start();
   };
@@ -151,7 +137,6 @@ export default function DashboardPage() {
     const formData = new FormData();
     formData.append("file", file);
     setIsUploading(true);
-
     try {
       const res = await fetch("/api/ingest", { method: "POST", body: formData });
       if (!res.ok) throw new Error(await res.text());
@@ -167,8 +152,9 @@ export default function DashboardPage() {
 
   async function handleUploadForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const fileInput = (e.currentTarget.elements.namedItem("file") as HTMLInputElement);
-    if (fileInput?.files?.length) await processUpload(fileInput.files[0]);
+    const formData = new FormData(e.currentTarget);
+    const file = formData.get("file") as File;
+    if (file && file.name) await processUpload(file);
   }
 
   // --- LOGIC: FILE OPS ---
@@ -191,7 +177,7 @@ export default function DashboardPage() {
       saveDocsToStorage(newDocs);
       if (activeDoc?.id === docId) {
         if (newDocs.length > 0) handleSwitchFile(newDocs[0]);
-        else window.location.reload(); // Returns to Landing Page if empty
+        else window.location.reload(); 
       }
     } catch (err) { alert("Failed to delete."); }
   }
@@ -241,7 +227,7 @@ export default function DashboardPage() {
         audioRef.current = audio;
         await new Promise((resolve) => {
           audio.onended = resolve;
-          audio.play().catch(() => console.log("Playback interrupted"));
+          audio.play().catch(() => {});
         });
       } catch (err) { break; }
     }
@@ -259,13 +245,6 @@ export default function DashboardPage() {
     }
   }
 
-  useEffect(() => {
-    if (currentLineIndex !== null && scriptViewportRef.current) {
-      const activeElement = document.getElementById(`script-line-${currentLineIndex}`);
-      if (activeElement) activeElement.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, [currentLineIndex]);
-
   if (!mounted) return null;
 
   return (
@@ -274,59 +253,22 @@ export default function DashboardPage() {
         <div className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm" onClick={() => { setShowLeftSidebar(false); setShowRightSidebar(false); }} />
       )}
 
-      {/* LEFT SIDEBAR */}
-      <div className={`fixed inset-y-0 left-0 z-40 w-[280px] bg-white dark:bg-black border-r border-zinc-200 dark:border-zinc-800 flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:w-[280px] ${showLeftSidebar ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="h-16 flex items-center justify-between px-4 border-b border-zinc-100 dark:border-zinc-800/50">
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded bg-zinc-900 dark:bg-white flex items-center justify-center text-white dark:text-black font-bold text-xs">N</div>
-            <span className="font-semibold text-sm tracking-tight">NoteWave</span>
-          </div>
-          <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="h-8 w-8 text-zinc-400">
-            {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </Button>
-        </div>
-        <div className="p-4">
-          <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-            <DialogTrigger asChild>
-                <Button variant="outline" className="w-full justify-start gap-2 border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 h-10">
-                  <Plus className="w-4 h-4" />
-                  <span className="text-sm">New Source</span>
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="dark:bg-zinc-900 dark:border-zinc-800">
-              <DialogHeader><DialogTitle>Add Source</DialogTitle></DialogHeader>
-              <form onSubmit={handleUploadForm} className="space-y-4 mt-4">
-                <Input name="file" type="file" accept=".pdf" required className="dark:bg-zinc-950 dark:border-zinc-800" />
-                <Button type="submit" disabled={isUploading} className="w-full dark:bg-white dark:text-black dark:hover:bg-zinc-200">
-                  {isUploading ? <Loader2 className="animate-spin mr-2" /> : "Upload PDF"}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-        <ScrollArea className="flex-1 px-2">
-          <div className="space-y-0.5">
-            <h3 className="px-2 mb-2 text-[10px] font-medium text-zinc-400 uppercase tracking-wider">Library</h3>
-            {documents.map((doc) => (
-              <div 
-                key={doc.id}
-                onClick={() => handleSwitchFile(doc)}
-                className={`group flex items-center justify-between px-2 py-2 rounded-md cursor-pointer transition-all ${activeDoc?.id === doc.id ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white font-medium" : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50"}`}
-              >
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <FileText className="w-4 h-4 flex-shrink-0 opacity-70" />
-                  <span className="text-sm truncate">{doc.name}</span>
-                </div>
-                <Button size="icon" variant="ghost" className="opacity-0 group-hover:opacity-100 h-6 w-6 text-zinc-400 hover:text-red-500 hover:bg-transparent" onClick={(e) => handleDeleteFile(e, doc.id, doc.name)}>
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-      </div>
+      {/* MODULAR SIDEBAR LEFT */}
+      <SidebarLeft 
+        documents={documents}
+        activeDoc={activeDoc}
+        isUploading={isUploading}
+        isUploadOpen={isUploadOpen}
+        setIsUploadOpen={setIsUploadOpen}
+        handleUploadForm={handleUploadForm}
+        handleSwitchFile={handleSwitchFile}
+        handleDeleteFile={handleDeleteFile}
+        setTheme={setTheme}
+        theme={theme}
+        showLeftSidebar={showLeftSidebar}
+      />
 
-      {/* CENTER CHAT */}
+      {/* CENTER CHAT AREA */}
       <div className="flex-1 flex flex-col relative bg-zinc-50/50 dark:bg-black z-10 w-full">
         <div className="h-16 flex items-center justify-between px-4 border-b border-zinc-200/50 dark:border-zinc-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm sticky top-0 z-20">
           <Button variant="ghost" size="icon" className="md:hidden text-zinc-500" onClick={() => setShowLeftSidebar(true)}>
@@ -344,7 +286,7 @@ export default function DashboardPage() {
             </span>
           </div>
           <Button variant="ghost" size="icon" className="lg:hidden text-zinc-500" onClick={() => setShowRightSidebar(true)}>
-            <Headphones className="w-5 h-5" />
+            <Mic className="w-5 h-5" />
           </Button>
         </div>
 
@@ -355,7 +297,6 @@ export default function DashboardPage() {
                 <h3 className="text-2xl font-semibold text-zinc-900 dark:text-white">What do you want to know?</h3>
               </div>
             )}
-            
             {messages.map((m, i) => (
               <div key={i} className={`flex gap-6 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
                 <Avatar className={`h-8 w-8 mt-1 border ${m.role === 'user' ? 'border-zinc-200 dark:border-zinc-700' : 'border-transparent bg-transparent'}`}>
@@ -363,7 +304,6 @@ export default function DashboardPage() {
                     {m.role === 'user' ? <User className="w-4 h-4 text-zinc-500" /> : <Bot className="w-5 h-5 text-zinc-900 dark:text-white" />}
                   </AvatarFallback>
                 </Avatar>
-                
                 <div className={`flex-1 text-sm leading-7 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
                   {m.role === 'user' ? (
                     <span className="inline-block bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-4 py-2 rounded-2xl rounded-tr-sm font-medium">
@@ -404,75 +344,24 @@ export default function DashboardPage() {
             >
               {isListening ? <StopCircle className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
             </Button>
-
-            <Button 
-              type="submit" 
-              disabled={isLoading || !input.trim()} 
-              size="icon" 
-              className="absolute right-2 top-2 h-10 w-10 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black hover:bg-zinc-700 dark:hover:bg-zinc-200 disabled:opacity-50"
-            >
+            <Button type="submit" disabled={isLoading || !input.trim()} size="icon" className="absolute right-2 top-2 h-10 w-10 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black hover:bg-zinc-700 dark:hover:bg-zinc-200 disabled:opacity-50">
               <ArrowUp className="w-5 h-5" />
             </Button>
           </form>
         </div>
       </div>
 
-      {/* RIGHT SIDEBAR */}
-      <div className={`fixed inset-y-0 right-0 z-40 w-[360px] bg-white dark:bg-black border-l border-zinc-200 dark:border-zinc-800 flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:w-[360px] ${showRightSidebar ? "translate-x-0" : "translate-x-full"}`}>
-        <div className="h-16 flex items-center justify-between px-6 border-b border-zinc-100 dark:border-zinc-800">
-           <h2 className="text-sm font-semibold flex items-center gap-2">
-             <Headphones className="w-4 h-4 text-zinc-500" /> Studio
-           </h2>
-           {podcastScript.length > 0 && (
-             <Button variant="ghost" size="icon" onClick={handleGenerateScript} disabled={isGeneratingScript} className="h-8 w-8 text-zinc-400">
-               <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingScript ? 'animate-spin' : ''}`} />
-             </Button>
-           )}
-        </div>
-        <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20">
-           <div className="flex flex-col items-center justify-center space-y-6">
-              <div className="flex items-center gap-1 h-12">
-                  {[...Array(16)].map((_, i) => (
-                   <div key={i} className={`w-1 bg-zinc-900 dark:bg-white rounded-full transition-all duration-100 ${isPlaying ? 'animate-pulse' : 'h-1 opacity-20'}`} style={{ height: isPlaying ? `${Math.max(10, Math.random() * 40)}px` : '4px', animationDelay: `${i * 0.05}s` }} />
-                  ))}
-              </div>
-              <div className="flex items-center gap-4">
-                {podcastScript.length === 0 ? (
-                   <Button onClick={handleGenerateScript} disabled={isGeneratingScript} className="rounded-full px-6 dark:bg-white dark:text-black">
-                     {isGeneratingScript ? "Generating..." : "Generate Audio"}
-                   </Button>
-                ) : (
-                   <Button onClick={togglePlayback} size="icon" className="h-14 w-14 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black shadow-lg hover:scale-105 transition-transform">
-                     {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-1" />}
-                   </Button>
-                )}
-              </div>
-           </div>
-        </div>
-        <div className="flex-1 overflow-hidden relative bg-white dark:bg-black">
-          <ScrollArea className="h-full" ref={scriptViewportRef}>
-            <div className="p-6 space-y-8 pb-[40vh]"> 
-              {podcastScript.length === 0 && !isGeneratingScript && (
-                <div className="flex flex-col items-center justify-center h-40 text-zinc-400 text-sm opacity-50">
-                  <Mic className="w-8 h-8 mb-2 stroke-1" />
-                  <p>No audio generated yet</p>
-                </div>
-              )}
-              {podcastScript.map((line, i) => {
-                const isActive = i === currentLineIndex;
-                return (
-                  <div key={i} id={`script-line-${i}`} className={`transition-all duration-500 ${isActive ? "opacity-100" : "opacity-30 blur-[0.5px] grayscale"}`}>
-                    <p className={`text-[10px] font-bold tracking-widest uppercase mb-2 ${isActive ? "text-zinc-900 dark:text-white" : "text-zinc-500"}`}>{line.speaker}</p>
-                    <p className={`text-base font-medium leading-relaxed ${isActive ? "text-zinc-800 dark:text-zinc-200" : "text-zinc-400"}`}>{line.text}</p>
-                  </div>
-                )
-              })}
-            </div>
-          </ScrollArea>
-          <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-white dark:from-black to-transparent pointer-events-none" />
-          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white dark:from-black to-transparent pointer-events-none" />
-        </div>
-      </div>
+      {/* MODULAR SIDEBAR RIGHT */}
+      <SidebarRight 
+        podcastScript={podcastScript}
+        isGeneratingScript={isGeneratingScript}
+        isPlaying={isPlaying}
+        currentLineIndex={currentLineIndex}
+        handleGenerateScript={handleGenerateScript}
+        togglePlayback={togglePlayback}
+        showRightSidebar={showRightSidebar}
+        scriptViewportRef={scriptViewportRef}
+      />
     </div>
   );
 }
