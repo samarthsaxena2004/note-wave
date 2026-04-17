@@ -165,17 +165,15 @@ Clean directory guiding users to specialized AI tools.
 
 ---
 
-## 🐳 Self-Hosting with Docker & Ollama
+## 🦙 Self-Hosting with Native Ollama
 
-NoteWave natively supports full privacy execution natively over Ollama. If you enable `USE_LOCAL_LLM=true` in `.env.local` and spawn the Docker container, all prompts securely route to your local hardware.
+NoteWave natively supports full privacy execution over a local Ollama instance without requiring complex Docker virtualization. Deploying NoteWave seamlessly to Vercel/Netlify remains unaffected.
 
-```bash
-# Boot Postgres (if added), Node env, and Ollama together
-docker-compose up --build -d
+1. Download [Ollama](https://ollama.com/) for Mac/Windows/Linux and let it run natively.
+2. In your terminal, pull your preferred model: `ollama run llama3.2`
+3. In NoteWave's `.env.local`, set `USE_LOCAL_LLM=true`
 
-# Inside the ollama container, pull your required model (e.g., Llama 3.2):
-docker exec -it notewave-ollama-1 ollama run llama3.2
-```
+All prompts will now securely and automatically route to your local `http://localhost:11434` engine!
 
 ## Contributing
 We welcome contributions! Please open an issue first to discuss the changes you want to make.
