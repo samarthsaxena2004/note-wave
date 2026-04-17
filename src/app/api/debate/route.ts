@@ -9,21 +9,24 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req: NextRequest) {
   try {
-    const { fileId } = await req.json();
+    const body = await req.json();
+    const { fileId, userId } = body;
 
-    let queryVector: number[];
+    if (!fileId || !userId) return NextResponse.json({ error: "fileId and userId required" }, { status: 400 });
+
+    let queryVector;
     try {
-      queryVector = await getEmbeddings("detailed arguments, pros and cons, core thesis");
-    } catch (err) {
-      console.error("⚠️ Embeddings failed, falling back to dummy vector:", err);
-      queryVector = new Array(384).fill(0.01); 
+      queryVector = await getEmbeddings("key arguments, claims, hypothesis, core thesis, conclusions, critical perspectives");
+    } catch (e) {
+      console.warn("⚠️ Embeddings failed, falling back to dummy vector for debate");
+      queryVector = new Array(384).fill(0.01);
     }
 
     const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
-    const index = pinecone.index(process.env.PINECONE_INDEX_NAME!);
+    const index = pinecone.index(process.env.PINECONE_INDEX_NAME!).namespace(userId);
 
     const queryResponse = await index.query({
-      vector: queryVector.length > 0 ? queryVector : new Array(384).fill(0.01),
+      vector: queryVector,
       topK: 10,
       filter: { filename: fileId },
       includeMetadata: true,

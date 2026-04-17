@@ -18,9 +18,12 @@ import SidebarLeft from "./SidebarLeft";
 import SidebarRight, { StudioType } from "./SidebarRight";
 import CommandPalette from "./CommandPalette";
 import { COMMANDS, Command } from "@/lib/commands";
+import { useAuth } from "@/lib/supabase/AuthProvider";
+import { supabase } from "@/lib/supabase/client";
 
 export default function DashboardPage() {
   const { setTheme, theme } = useTheme();
+  const { session } = useAuth();
   const [mounted, setMounted] = useState(false);
   
   // --- CORE STATE ---
@@ -76,16 +79,15 @@ export default function DashboardPage() {
   useEffect(() => {
     setMounted(true);
     
-    // Load Docs
-    const savedDocs = localStorage.getItem("notewave_docs");
-    if (savedDocs) {
-      try {
-        const parsed = JSON.parse(savedDocs);
-        if (Array.isArray(parsed)) {
-          setDocuments(parsed);
-          if (parsed.length > 0) setActiveDoc(parsed[0]);
-        }
-      } catch (e) { console.error("Storage Error:", e); }
+    // Load Docs from Supabase
+    if (session) {
+      supabase.from("documents").select("*").eq("user_id", session.user.id).order('created_at', { ascending: true })
+        .then(({ data, error }) => {
+          if (!error && data) {
+            setDocuments(data);
+            if (data.length > 0) setActiveDoc(data[0]);
+          }
+        });
     }
 
     // Load App Settings
@@ -100,8 +102,8 @@ export default function DashboardPage() {
     if (mounted) localStorage.setItem("notewave_settings", JSON.stringify(appSettings));
   }, [appSettings, mounted]);
 
-  const saveDocsToStorage = (newDocs: any[]) => {
-    localStorage.setItem("notewave_docs", JSON.stringify(newDocs));
+  const saveDocsToStorage = async (newDocs: any[]) => {
+    // Deprecated for local storage, handled individually via supabase inserts/deletes.
   };
 
   // --- STUDIO HANDLERS ---
@@ -112,7 +114,7 @@ export default function DashboardPage() {
       const res = await fetch("/api/graph/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileId: activeDoc.name }),
+        body: JSON.stringify({ fileId: activeDoc.name, userId: session!.user.id }),
       });
       const data = await res.json();
       setGraphData(data);
@@ -126,7 +128,7 @@ export default function DashboardPage() {
       const res = await fetch("/api/debate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileId: activeDoc.name }),
+        body: JSON.stringify({ fileId: activeDoc.name, userId: session!.user.id }),
       });
       const data = await res.json();
       setDebateTranscript(data.transcript || []);
@@ -140,7 +142,7 @@ export default function DashboardPage() {
       const res = await fetch("/api/vault/audit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileId: activeDoc.name }),
+        body: JSON.stringify({ fileId: activeDoc.name, userId: session!.user.id }),
       });
       const data = await res.json();
       setVaultAudit(data);
@@ -154,7 +156,7 @@ export default function DashboardPage() {
       const res = await fetch("/api/quiz", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileId: activeDoc.name, count }),
+        body: JSON.stringify({ fileId: activeDoc.name, count, userId: session!.user.id }),
       });
       const data = await res.json();
       setQuizQuestions(data.questions || []);
@@ -168,7 +170,7 @@ export default function DashboardPage() {
       const res = await fetch("/api/flashcards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileId: activeDoc.name }),
+        body: JSON.stringify({ fileId: activeDoc.name, userId: session!.user.id }),
       });
       const data = await res.json();
       if (data.flashcards) setFlashcards(data.flashcards);
@@ -182,7 +184,7 @@ export default function DashboardPage() {
       const res = await fetch("/api/podcast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileId: activeDoc.name }),
+        body: JSON.stringify({ fileId: activeDoc.name, userId: session!.user.id }),
       });
       const data = await res.json();
       if (data.script) setPodcastScript(data.script);
@@ -232,7 +234,7 @@ export default function DashboardPage() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages, fileId: activeDoc.name }),
+        body: JSON.stringify({ messages: newMessages, fileId: activeDoc.name, userId: session!.user.id }),
       });
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -261,11 +263,16 @@ export default function DashboardPage() {
           const file = new FormData(e.currentTarget).get("file") as File;
           if (!file) return;
           setIsUploading(true);
-          const formData = new FormData(); formData.append("file", file);
+          const formData = new FormData(); 
+          formData.append("file", file);
+          formData.append("userId", session!.user.id);
           const res = await fetch("/api/ingest", { method: "POST", body: formData });
           const data = await res.json();
-          const updated = [...documents, { id: Date.now(), name: data.filename, mastery: 0 }];
-          setDocuments(updated); saveDocsToStorage(updated); setActiveDoc(updated[updated.length-1]);
+          const { data: newRow } = await supabase.from("documents").insert([{ user_id: session!.user.id, name: data.filename }]).select().single();
+          if (newRow) {
+            const updated = [...documents, newRow];
+            setDocuments(updated); setActiveDoc(newRow);
+          }
           setIsUploading(false); setIsUploadOpen(false);
           if (appSettings.autoAudit) handleVaultAudit();
         }}
@@ -273,7 +280,12 @@ export default function DashboardPage() {
           setActiveDoc(doc); setMessages([]); setActiveStudio("none"); 
           setGraphData({nodes:[], links:[]}); setDebateTranscript([]); setVaultAudit(null); setQuizQuestions([]);
         }}
-        handleDeleteFile={(e, id, name) => { e.stopPropagation(); const updated = documents.filter(d => d.id !== id); setDocuments(updated); saveDocsToStorage(updated); }}
+        handleDeleteFile={async (e, id, name) => { 
+          e.stopPropagation(); 
+          await supabase.from("documents").delete().eq("id", id);
+          const updated = documents.filter(d => d.id !== id); 
+          setDocuments(updated); 
+        }}
         setTheme={setTheme} theme={theme} showLeftSidebar={showLeftSidebar} isWide={leftSidebarWide}
         toggleSidebar={() => setShowLeftSidebar(!showLeftSidebar)}
         onOpenSettings={() => {

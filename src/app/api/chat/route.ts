@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { getEmbeddings } from "@/lib/rag";
@@ -7,27 +7,31 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, fileId } = await req.json();
+    const body = await req.json();
+    const { messages, fileId, userId } = body;
 
-    // Generate real embeddings from user's message
-    const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user");
-    const queryText = lastUserMsg?.content || "core document context";
-
-    let queryVector: number[];
-    try {
-      queryVector = await getEmbeddings(queryText);
-    } catch (err) {
-      console.error("⚠️ Embeddings failed, falling back to dummy vector:", err);
-      // Fallback if HF is down or rate-limited
-      queryVector = new Array(384).fill(0.01); 
+    if (!messages || !fileId || !userId) {
+      return NextResponse.json({ error: "Messages, fileId, and userId are required" }, { status: 400 });
     }
 
+    const lastMessage = messages[messages.length - 1];
+
+    let queryVector;
+    try {
+      if (!lastMessage || !lastMessage.content) throw new Error("Empty message");
+      queryVector = await getEmbeddings(lastMessage.content);
+    } catch (e) {
+      console.warn("⚠️ Embeddings failed, falling back to dummy vector for chat context");
+      queryVector = new Array(384).fill(0.01);
+    }
+
+    // 2. Query Pinecone for context
     const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
-    const index = pinecone.index(process.env.PINECONE_INDEX_NAME!);
+    const index = pinecone.index(process.env.PINECONE_INDEX_NAME!).namespace(userId);
 
     // Fetch context from Pinecone
     const queryResponse = await index.query({
-      vector: queryVector.length > 0 ? queryVector : new Array(384).fill(0.01),
+      vector: queryVector,
       topK: 5,
       filter: { filename: fileId },
       includeMetadata: true,

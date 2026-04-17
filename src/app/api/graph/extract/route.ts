@@ -6,26 +6,29 @@ import { getEmbeddings } from "@/lib/rag";
 
 export async function POST(req: NextRequest) {
   try {
-    const { fileId } = await req.json();
+    const body = await req.json();
+    const { fileId, userId } = body;
+
+    if (!fileId || !userId) return NextResponse.json({ error: "fileId and userId required" }, { status: 400 });
 
     if (!process.env.PINECONE_API_KEY || !process.env.PINECONE_INDEX_NAME) {
       throw new Error("Pinecone config missing");
     }
 
-    const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
-    const index = pinecone.index(process.env.PINECONE_INDEX_NAME);
-
-    let queryVector: number[];
+    let queryVector;
     try {
-      queryVector = await getEmbeddings("entities, relationships, concepts, nodes, edges");
-    } catch (err) {
-      console.error("⚠️ Embeddings failed, falling back to dummy vector:", err);
-      queryVector = new Array(384).fill(0.01); 
+      queryVector = await getEmbeddings("relationships, graph, concepts, entities, connections, dependencies");
+    } catch (e) {
+      console.warn("⚠️ Embeddings failed, falling back to dummy vector for graph");
+      queryVector = new Array(384).fill(0.01);
     }
+
+    const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
+    const index = pinecone.index(process.env.PINECONE_INDEX_NAME!).namespace(userId);
 
     // Fetch context chunks for the specific file
     const queryResponse = await index.query({
-      vector: queryVector.length > 0 ? queryVector : new Array(384).fill(0.01),
+      vector: queryVector,
       topK: 12,
       filter: { filename: fileId },
       includeMetadata: true,

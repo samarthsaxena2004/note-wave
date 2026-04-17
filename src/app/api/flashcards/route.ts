@@ -1,32 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import Groq from "groq-sdk";
-import { getEmbeddings } from "@/lib/rag";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req: NextRequest) {
   try {
-    const { fileId } = await req.json();
+    const body = await req.json();
+    const { fileId, userId } = body;
+
+    if (!fileId || !userId) return NextResponse.json({ error: "fileId and userId required" }, { status: 400 });
 
     if (!process.env.GROQ_API_KEY || !process.env.PINECONE_API_KEY) {
       throw new Error("Missing API Keys");
     }
 
-    let queryVector: number[];
-    try {
-      queryVector = await getEmbeddings("key concepts, definitions, important facts, terms");
-    } catch (err) {
-      console.error("⚠️ Embeddings failed, falling back to dummy vector:", err);
-      queryVector = new Array(384).fill(0.01); 
-    }
-
-    const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
-    const index = pinecone.index(process.env.PINECONE_INDEX_NAME!);
+    const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
+    const index = pinecone.index(process.env.PINECONE_INDEX_NAME!).namespace(userId);
 
     // Fetch relevant document chunks
     const queryResponse = await index.query({
-      vector: queryVector.length > 0 ? queryVector : new Array(384).fill(0.01),
+      vector: new Array(384).fill(0.01),
       topK: 12,
       filter: { filename: fileId },
       includeMetadata: true,

@@ -5,17 +5,27 @@ import { useTheme } from "next-themes";
 import { Sun, Moon, UploadCloud, Loader2, Github, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+import { useAuth } from "@/lib/supabase/AuthProvider";
+import { AuthModal } from "@/components/auth/AuthModal";
+
 export default function LandingPage() {
   const { setTheme, theme } = useTheme();
+  const { session, isLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
   async function processUpload(file: File) {
+    if (!session) {
+      setShowAuthModal(true);
+      return;
+    }
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("userId", session.user.id);
     setIsUploading(true);
     try {
       const res = await fetch("/api/ingest", { method: "POST", body: formData });
@@ -57,26 +67,36 @@ export default function LandingPage() {
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-zinc-200/50 dark:bg-zinc-800/20 rounded-full blur-[120px]" />
         </div>
-        <div className="relative z-10 text-center max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="relative z-10 text-center max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 w-full flex flex-col items-center">
           <div className="space-y-4">
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-zinc-900 dark:text-white">Chat with your documents.</h1>
             <p className="text-lg text-zinc-500 dark:text-zinc-400 max-w-lg mx-auto leading-relaxed">Upload a PDF to generate podcasts, summaries, and ask questions using advanced AI.</p>
           </div>
-          <div 
-            onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
-            className={`group relative border-2 border-dashed rounded-3xl p-10 transition-all duration-300 cursor-pointer ${isDragging ? "border-zinc-900 dark:border-white bg-zinc-50 dark:bg-zinc-900 scale-[1.02]" : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 bg-white/50 dark:bg-black/50"}`}
-          >
-            <div className="flex flex-col items-center gap-4">
-              <div className={`p-4 rounded-full transition-colors ${isDragging ? "bg-zinc-200 dark:bg-zinc-800" : "bg-zinc-100 dark:bg-zinc-900"}`}>
-                {isUploading ? <Loader2 className="w-8 h-8 animate-spin" /> : <UploadCloud className="w-8 h-8 text-zinc-400" />}
+
+          {isLoading ? (
+            <div className="p-10"><Loader2 className="w-8 h-8 animate-spin mx-auto text-zinc-400" /></div>
+          ) : (
+            <div 
+              onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
+              className={`group relative w-full border-2 border-dashed rounded-3xl p-10 transition-all duration-300 cursor-pointer ${isDragging ? "border-zinc-900 dark:border-white bg-zinc-50 dark:bg-zinc-900 scale-[1.02]" : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 bg-white/50 dark:bg-black/50"}`}
+            >
+              <div className="flex flex-col items-center gap-4">
+                <div className={`p-4 rounded-full transition-colors ${isDragging ? "bg-zinc-200 dark:bg-zinc-800" : "bg-zinc-100 dark:bg-zinc-900"}`}>
+                  {isUploading ? <Loader2 className="w-8 h-8 animate-spin" /> : <UploadCloud className="w-8 h-8 text-zinc-400" />}
+                </div>
+                <div className="space-y-1 text-center">
+                  <p className="font-medium">{isUploading ? "Processing PDF..." : "Drag and drop your PDF here"}</p>
+                  <p className="text-sm text-zinc-400">or click to browse</p>
+                </div>
+                <input type="file" accept=".pdf" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={(e) => { 
+                  if (e.target.files?.length) {
+                    processUpload(e.target.files[0]);
+                    e.target.value = '';
+                  }
+                }} disabled={isUploading} />
               </div>
-              <div className="space-y-1">
-                <p className="font-medium">{isUploading ? "Processing PDF..." : "Drag and drop your PDF here"}</p>
-                <p className="text-sm text-zinc-400">or click to browse</p>
-              </div>
-              <input type="file" accept=".pdf" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={(e) => { if (e.target.files?.length) processUpload(e.target.files[0]); }} disabled={isUploading} />
             </div>
-          </div>
+          )}
         </div>
       </main>
 
@@ -97,6 +117,20 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+      
+      {showAuthModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-sm animate-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setShowAuthModal(false)}
+              className="absolute -top-12 right-0 text-white/70 hover:text-white font-medium text-sm transition-colors"
+            >
+              Close
+            </button>
+            <AuthModal />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
