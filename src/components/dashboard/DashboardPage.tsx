@@ -16,6 +16,8 @@ import { Input } from "@/components/ui/input";
 // Modular Components
 import SidebarLeft from "./SidebarLeft";
 import SidebarRight from "./SidebarRight";
+import CommandPalette from "./CommandPalette";
+import { COMMANDS, Command } from "@/lib/commands";
 
 export default function DashboardPage() {
   const { setTheme, theme } = useTheme();
@@ -39,17 +41,33 @@ export default function DashboardPage() {
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentLineIndex, setCurrentLineIndex] = useState<number | null>(null);
-  const scriptViewportRef = useRef<HTMLDivElement>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const stopSignalRef = useRef(false);
-
+  
   // --- UI STATE ---
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [showLeftSidebar, setShowLeftSidebar] = useState(false);
   const [showRightSidebar, setShowRightSidebar] = useState(false);
 
-  // --- INITIALIZATION & PERSISTENCE ---
+  // --- CLI STATE ---
+  const [filteredCommands, setFilteredCommands] = useState<Command[]>([]);
+  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
+
+  // --- REFS ---
+  const scriptViewportRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const stopSignalRef = useRef(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // --- AUTO-SCROLL LOGIC ---
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isLoading]);
+
+  // --- INITIALIZATION ---
   useEffect(() => {
     setMounted(true);
     const savedDocs = localStorage.getItem("notewave_docs");
@@ -68,35 +86,68 @@ export default function DashboardPage() {
     localStorage.setItem("notewave_docs", JSON.stringify(newDocs));
   };
 
-  // --- LOGIC: VOICE INPUT ---
-  const toggleVoiceInput = () => {
-    if (isListening) {
-      if (recognitionRef.current) recognitionRef.current.stop();
-      setIsListening(false);
-      return;
+  // --- CLI LOGIC ---
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setInput(val);
+    if (val.startsWith("/")) {
+      const query = val.slice(1).toLowerCase();
+      const filtered = COMMANDS.filter(c => c.id.includes(query));
+      setFilteredCommands(filtered);
+      setSelectedCommandIndex(0);
+    } else {
+      setFilteredCommands([]);
     }
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Browser does not support voice input.");
-      return;
-    }
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.onstart = () => setIsListening(true);
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setInput((prev) => prev + (prev ? " " : "") + transcript);
-    };
-    recognition.onerror = () => setIsListening(false);
-    recognition.onend = () => setIsListening(false);
-    recognitionRef.current = recognition;
-    recognition.start();
   };
 
-  // --- LOGIC: CHAT ---
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (filteredCommands.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedCommandIndex(prev => (prev + 1) % filteredCommands.length);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedCommandIndex(prev => (prev - 1 + filteredCommands.length) % filteredCommands.length);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        executeCommand(filteredCommands[selectedCommandIndex]);
+      } else if (e.key === "Escape") {
+        setFilteredCommands([]);
+      }
+    }
+  };
+
+  const executeCommand = (cmd: Command) => {
+    setFilteredCommands([]);
+    switch (cmd.id) {
+      case "podcast":
+        setInput("");
+        setShowRightSidebar(true);
+        handleGenerateScript();
+        break;
+      case "quiz":
+        setInput("Generate a quiz for this document...");
+        setTimeout(() => document.getElementById("chat-form")?.dispatchEvent(new Event('submit', {cancelable: true, bubbles: true})), 10);
+        break;
+      case "summary":
+        setInput("Provide a detailed summary of this document.");
+        setTimeout(() => document.getElementById("chat-form")?.dispatchEvent(new Event('submit', {cancelable: true, bubbles: true})), 10);
+        break;
+      default:
+        setInput(`${cmd.label} `);
+    }
+  };
+
+  // --- LOGIC: CHAT & ACTIONS ---
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim() || !activeDoc) return;
+    
+    if (input.startsWith("/") && !filteredCommands.length) {
+      const cmdId = input.slice(1).split(" ")[0];
+      const cmd = COMMANDS.find(c => c.id === cmdId);
+      if (cmd) { executeCommand(cmd); return; }
+    }
 
     const userMessage = { role: "user", content: input };
     const newMessages = [...messages, userMessage];
@@ -132,7 +183,7 @@ export default function DashboardPage() {
     } catch (error) { console.error(error); } finally { setIsLoading(false); }
   }
 
-  // --- LOGIC: UPLOAD ---
+  // --- ORIGINAL LOGIC HANDLERS ---
   async function processUpload(file: File) {
     const formData = new FormData();
     formData.append("file", file);
@@ -157,7 +208,6 @@ export default function DashboardPage() {
     if (file && file.name) await processUpload(file);
   }
 
-  // --- LOGIC: FILE OPS ---
   function handleSwitchFile(doc: any) {
     setActiveDoc(doc);
     setMessages([]); 
@@ -182,7 +232,6 @@ export default function DashboardPage() {
     } catch (err) { alert("Failed to delete."); }
   }
 
-  // --- LOGIC: PODCAST ---
   async function handleGenerateScript() {
     stopAudio();
     setIsGeneratingScript(true);
@@ -231,10 +280,7 @@ export default function DashboardPage() {
         });
       } catch (err) { break; }
     }
-    if (!stopSignalRef.current) {
-      setIsPlaying(false);
-      setCurrentLineIndex(null);
-    }
+    if (!stopSignalRef.current) { setIsPlaying(false); setCurrentLineIndex(null); }
   }
 
   function togglePlayback() {
@@ -245,6 +291,24 @@ export default function DashboardPage() {
     }
   }
 
+  const toggleVoiceInput = () => {
+    if (isListening) {
+      if (recognitionRef.current) recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.onstart = () => setIsListening(true);
+    recognition.onresult = (event: any) => setInput(prev => prev + event.results[0][0].transcript);
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+  };
+
   if (!mounted) return null;
 
   return (
@@ -253,24 +317,17 @@ export default function DashboardPage() {
         <div className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm" onClick={() => { setShowLeftSidebar(false); setShowRightSidebar(false); }} />
       )}
 
-      {/* MODULAR SIDEBAR LEFT */}
       <SidebarLeft 
-        documents={documents}
-        activeDoc={activeDoc}
-        isUploading={isUploading}
-        isUploadOpen={isUploadOpen}
-        setIsUploadOpen={setIsUploadOpen}
-        handleUploadForm={handleUploadForm}
-        handleSwitchFile={handleSwitchFile}
-        handleDeleteFile={handleDeleteFile}
-        setTheme={setTheme}
-        theme={theme}
-        showLeftSidebar={showLeftSidebar}
+        documents={documents} activeDoc={activeDoc} isUploading={isUploading} isUploadOpen={isUploadOpen}
+        setIsUploadOpen={setIsUploadOpen} handleUploadForm={handleUploadForm} handleSwitchFile={handleSwitchFile}
+        handleDeleteFile={handleDeleteFile} setTheme={setTheme} theme={theme} showLeftSidebar={showLeftSidebar}
       />
 
-      {/* CENTER CHAT AREA */}
-      <div className="flex-1 flex flex-col relative bg-zinc-50/50 dark:bg-black z-10 w-full">
-        <div className="h-16 flex items-center justify-between px-4 border-b border-zinc-200/50 dark:border-zinc-800 bg-white/80 dark:bg-black/80 backdrop-blur-sm sticky top-0 z-20">
+      {/* --- CENTER CHAT SECTION --- */}
+      <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-black relative overflow-hidden">
+        
+        {/* FIXED HEADER: Does not move during scroll */}
+        <header className="h-16 flex-none flex items-center justify-between px-6 border-b border-zinc-200/50 dark:border-zinc-800 bg-white dark:bg-black z-30">
           <Button variant="ghost" size="icon" className="md:hidden text-zinc-500" onClick={() => setShowLeftSidebar(true)}>
             <div className="h-5 w-5 grid gap-1">
               <span className="h-0.5 w-full bg-current rounded-full" />
@@ -278,89 +335,86 @@ export default function DashboardPage() {
               <span className="h-0.5 w-full bg-current rounded-full" />
             </div>
           </Button>
-          <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 hidden sm:inline">Current:</span>
-            <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1">
-              <FileText className="w-3 h-3" />
-              <span className="max-w-[100px] truncate">{activeDoc?.name}</span>
+          
+          <div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 hidden sm:inline">Active Source</span>
+            <div className="h-3 w-px bg-zinc-300 dark:bg-zinc-700 hidden sm:inline" />
+            <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+              <FileText className="w-3.5 h-3.5 text-zinc-500" />
+              <span className="max-w-[120px] md:max-w-[180px] truncate">{activeDoc?.name}</span>
             </span>
           </div>
+
           <Button variant="ghost" size="icon" className="lg:hidden text-zinc-500" onClick={() => setShowRightSidebar(true)}>
             <Mic className="w-5 h-5" />
           </Button>
-        </div>
+        </header>
 
-        <ScrollArea className="flex-1">
-          <div className="max-w-3xl mx-auto p-4 md:p-10 space-y-10">
-            {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-6 opacity-60">
-                <h3 className="text-2xl font-semibold text-zinc-900 dark:text-white">What do you want to know?</h3>
-              </div>
-            )}
-            {messages.map((m, i) => (
-              <div key={i} className={`flex gap-6 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                <Avatar className={`h-8 w-8 mt-1 border ${m.role === 'user' ? 'border-zinc-200 dark:border-zinc-700' : 'border-transparent bg-transparent'}`}>
-                  <AvatarFallback className={m.role === 'user' ? 'bg-zinc-100 dark:bg-zinc-800 text-xs' : 'bg-transparent'}>
-                    {m.role === 'user' ? <User className="w-4 h-4 text-zinc-500" /> : <Bot className="w-5 h-5 text-zinc-900 dark:text-white" />}
-                  </AvatarFallback>
-                </Avatar>
-                <div className={`flex-1 text-sm leading-7 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
-                  {m.role === 'user' ? (
-                    <span className="inline-block bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-4 py-2 rounded-2xl rounded-tr-sm font-medium">
-                      {m.content}
-                    </span>
-                  ) : (
-                    <div className="prose prose-sm prose-zinc dark:prose-invert max-w-none">
+        {/* CHAT VIEWPORT: flex-1 ensures it takes all available middle space */}
+        <div className="flex-1 overflow-hidden relative">
+          <ScrollArea className="h-full w-full">
+            <div className="max-w-3xl mx-auto p-4 md:p-10 space-y-10">
+              {messages.length === 0 && (
+                <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-6 opacity-60">
+                  <h3 className="text-2xl font-semibold text-zinc-900 dark:text-white">What do you want to know?</h3>
+                  <p className="text-sm text-zinc-400">Type <span className="px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 font-mono">/</span> to explore tools</p>
+                </div>
+              )}
+              {messages.map((m, i) => (
+                <div key={i} className={`flex gap-6 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                  <Avatar className={`h-8 w-8 mt-1 border flex-none ${m.role === 'user' ? 'border-zinc-200 dark:border-zinc-700' : 'border-transparent bg-transparent'}`}>
+                    <AvatarFallback className={m.role === 'user' ? 'bg-zinc-100 dark:bg-zinc-800 text-xs' : 'bg-transparent'}>
+                      {m.role === 'user' ? <User className="w-4 h-4 text-zinc-500" /> : <Bot className="w-5 h-5 text-zinc-900 dark:text-white" />}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className={`flex-1 min-w-0 text-sm leading-7 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
+                    <div className={`${m.role === 'user' ? 'inline-block bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-4 py-2 rounded-2xl rounded-tr-sm font-medium break-words' : 'prose prose-sm prose-zinc dark:prose-invert max-w-none break-words'}`}>
                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="flex gap-6">
-                <div className="w-8 flex justify-center"><Loader2 className="w-4 h-4 animate-spin text-zinc-400" /></div>
-                <span className="text-sm text-zinc-400">Thinking...</span>
-              </div>
-            )}
-            <div className="h-24" />
-          </div>
-        </ScrollArea>
+              ))}
+              {isLoading && (
+                <div className="flex gap-6">
+                  <div className="w-8 flex justify-center"><Loader2 className="w-4 h-4 animate-spin text-zinc-400" /></div>
+                  <span className="text-sm text-zinc-400 animate-pulse">Thinking...</span>
+                </div>
+              )}
+              
+              {/* THE SPACER: Prevents input bar from overlapping last message */}
+              <div className="h-32" />
+              
+              {/* THE ANCHOR: The scroll target */}
+              <div ref={messagesEndRef} />
+            </div>
+          </ScrollArea>
+        </div>
 
-        <div className="absolute bottom-6 left-0 right-0 px-4">
-          <form onSubmit={handleSubmit} className="max-w-2xl mx-auto relative shadow-2xl shadow-zinc-200/50 dark:shadow-none">
-            <Input 
-              value={input} 
-              onChange={e => setInput(e.target.value)} 
-              placeholder="Ask anything..." 
-              className="h-14 pl-12 pr-12 rounded-full border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-base focus-visible:ring-1 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-700"
-            />
-            <Button 
-              type="button" 
-              onClick={toggleVoiceInput}
-              variant="ghost" 
-              size="icon" 
-              className={`absolute left-2 top-2 h-10 w-10 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 ${isListening ? "text-red-500 animate-pulse" : "text-zinc-400"}`}
-            >
-              {isListening ? <StopCircle className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-            </Button>
-            <Button type="submit" disabled={isLoading || !input.trim()} size="icon" className="absolute right-2 top-2 h-10 w-10 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black hover:bg-zinc-700 dark:hover:bg-zinc-200 disabled:opacity-50">
-              <ArrowUp className="w-5 h-5" />
-            </Button>
-          </form>
+        {/* INPUT SECTION: Floating above with gradient transparency */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white dark:from-black via-white/80 dark:via-black/80 to-transparent pointer-events-none">
+          <div className="max-w-2xl mx-auto relative pointer-events-auto pb-4">
+            <CommandPalette commands={filteredCommands} selectedIndex={selectedCommandIndex} onSelect={executeCommand} />
+            <form id="chat-form" onSubmit={handleSubmit} className="relative shadow-2xl shadow-zinc-300/50 dark:shadow-none bg-white dark:bg-zinc-900 rounded-full transition-transform focus-within:scale-[1.01]">
+              <Input 
+                value={input} onChange={handleInputChange} onKeyDown={handleKeyDown}
+                placeholder="Ask anything or type /" 
+                className="h-14 pl-12 pr-12 rounded-full border-zinc-200 dark:border-zinc-800 bg-transparent text-base focus-visible:ring-1 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-700"
+              />
+              <Button type="button" onClick={toggleVoiceInput} variant="ghost" size="icon" className={`absolute left-2 top-2 h-10 w-10 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 ${isListening ? "text-red-500 animate-pulse" : "text-zinc-400"}`}>
+                {isListening ? <StopCircle className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              </Button>
+              <Button type="submit" disabled={isLoading || !input.trim()} size="icon" className="absolute right-2 top-2 h-10 w-10 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black hover:bg-zinc-700 dark:hover:bg-zinc-200 disabled:opacity-50">
+                <ArrowUp className="w-5 h-5" />
+              </Button>
+            </form>
+          </div>
         </div>
       </div>
 
-      {/* MODULAR SIDEBAR RIGHT */}
       <SidebarRight 
-        podcastScript={podcastScript}
-        isGeneratingScript={isGeneratingScript}
-        isPlaying={isPlaying}
-        currentLineIndex={currentLineIndex}
-        handleGenerateScript={handleGenerateScript}
-        togglePlayback={togglePlayback}
-        showRightSidebar={showRightSidebar}
-        scriptViewportRef={scriptViewportRef}
+        podcastScript={podcastScript} isGeneratingScript={isGeneratingScript} isPlaying={isPlaying} 
+        currentLineIndex={currentLineIndex} handleGenerateScript={handleGenerateScript} togglePlayback={togglePlayback}
+        showRightSidebar={showRightSidebar} scriptViewportRef={scriptViewportRef}
       />
     </div>
   );
